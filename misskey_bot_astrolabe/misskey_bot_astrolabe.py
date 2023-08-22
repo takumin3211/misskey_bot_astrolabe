@@ -14,7 +14,7 @@ import exchange as e
 import random
 import settings
 
-#v.0.02.3
+#v.0.02.2
 mk = Misskey(settings.ADRESS, i=settings.TOKEN)
 
 def dt1():
@@ -32,7 +32,7 @@ def dt1():
     conn.close()
 
     print("ALos_sys_booting_now!")
-dt1()############
+dt1()
 
 class DBReader:
     def __init__(self, dbname, tablename):
