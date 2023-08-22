@@ -12,19 +12,14 @@ from transformers import pipeline
 import importlib
 import exchange as e
 import random
+import settings
 
-
-# 設定ファイル
-text = ("test.txt")
-dbname = r'api.db'# 設定ファイル行き
-AI_NAME = 'Astrolabe'
-# 初期化
-
+mk = Misskey(settings.ADRESS, i=settings.TOKEN)
 
 def dt1():
 
     dt1 = datetime.datetime.now()
-    conn = sqlite3.connect(dbname)
+    conn = sqlite3.connect(settings.dbname)
     cur = conn.cursor()
     cur.execute("UPDATE time_db SET time = ? WHERE name = 'first_time'", (dt1,))
     print(dt1)
@@ -63,7 +58,7 @@ class DBReader:
 def ohayou():
     	
 	# DBReaderクラスのインスタンスを作成する
-	dbreader = DBReader(r"D:\hobby\python\misskey\misskey_bot_astrolabe\misskey_bot_astrolabe\api.db", "ohayou")
+	dbreader = DBReader(settings.dbname, "ohayou")
 	# 取得したい列番号を定義する
 	column_a = 2
 	column_b = 3
@@ -85,7 +80,7 @@ def ohayou():
 	#print(test)
 	# Misskey投稿
 	
-	mk = Misskey("misskey.seitendan.com", i="UeZEaJ09jR9FKI7NHh5vtMaNYKfBxR0a")
+	
 	test_a = (test)
 	#投稿関数
 	mk.notes_create(text=test_a)
@@ -93,7 +88,7 @@ def ohayou():
 
 def oyasumi():
 		# DBReaderクラスのインスタンスを作成する
-	dbreader = DBReader(r"D:\hobby\python\misskey\misskey_bot_astrolabe\misskey_bot_astrolabe\api.db", "oyasumi")
+	dbreader = DBReader(settings.dbname, "oyasumi")
 	# 取得したい列番号を定義する
 	column_a = 2
 	column_b = 3
@@ -115,7 +110,7 @@ def oyasumi():
 	#print(test)
 	# Misskey投稿
 	
-	mk = Misskey("misskey.seitendan.com", i="UeZEaJ09jR9FKI7NHh5vtMaNYKfBxR0a")
+	
 	test_a = (test)
 	#投稿関数
 	mk.notes_create(text=test_a)
@@ -148,10 +143,10 @@ print('test02')
 
 
 	
-TOKEN='UeZEaJ09jR9FKI7NHh5vtMaNYKfBxR0a'
-msk = Misskey('misskey.seitendan.com', i=TOKEN)
-MY_ID = msk.i()['id']
-WS_URL='wss://misskey.seitendan.com/streaming?i='+TOKEN
+
+MY_ID = mk.i()['id']
+WS_URL_a = 'wss://' + settings.ADRESS + '?i='
+WS_URL = WS_URL_a + settings.TOKEN
 
 async def schedule_coroutine():
     while True:
@@ -197,7 +192,7 @@ async def on_note(note,user):
    USER_NAME = 'test_name'
    e.reply = note['text'].replace('@astrolabe', '')
 
-   #msk.notes_create(text='解答を生成しているので少し待っていて下さい！＾＾', reply_id=note['id'])############
+   #mk.notes_create(text='解答を生成しているので少し待っていて下さい！＾＾', reply_id=note['id'])############
    #翻訳
    if e.reply.startswith(('help', 'info', '機能')):
     time.sleep(4)
@@ -211,7 +206,7 @@ async def on_note(note,user):
 and more......
           
         ''')
-    msk.notes_create(text=info_text, cw='わたくしアストロラーベの機能をご紹介します！', reply_id=note['id'])
+    mk.notes_create(text=info_text, cw='わたくしアストロラーベの機能をご紹介します！', reply_id=note['id'])
    else:
       print('test04') 
       e.n = 0
@@ -225,7 +220,7 @@ and more......
 	   #LLMpy = LLM()
 	   #output_h = LLMpy.llm(input)
 	   #print(output_h)
-      msk.notes_create(text=output_h, cw='お待たせしました！丹精込めて答えましたよ～！', reply_id=note['id'])
+      mk.notes_create(text=output_h, cw='お待たせしました！丹精込めて答えましたよ～！', reply_id=note['id'])
    
 
 

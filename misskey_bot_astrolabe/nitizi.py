@@ -4,11 +4,10 @@ import schedule
 from time import sleep
 import sqlite3
 import pandas as pd
-
+import settings
 
 ##############設定ファイル##############
-df = pd.read_csv(r"api.csv")# 設定ファイル行き
-dbname = r'api.db'# 設定ファイル行き
+df = pd.read_csv(settings.csvname)# 設定ファイル行き
 
 
 ##############テスト用。api文のtxt保存版##############
@@ -20,8 +19,8 @@ dbname = r'api.db'# 設定ファイル行き
 #name1 = text["notesCount"]
 
 ##############API取得→必要値の取得##############
-mk = Misskey("misskey.seitendan.com", i="UeZEaJ09jR9FKI7NHh5vtMaNYKfBxR0a")
-text = mk.users_show(user_id="9ib6lbdave")
+mk = Misskey(settings.ADRESS, i=settings.TOKEN)
+text = mk.users_show(user_id = settings.AI_ID)
 
 name1 = text["notesCount"]
 name2 = text["followersCount"]
@@ -30,7 +29,7 @@ name3 = text["followingCount"]
 ##############SQLToday書き込み##############
 # CSV展開
 #データベース操作
-conn = sqlite3.connect(dbname)
+conn = sqlite3.connect(settings.dbname)
 cur = conn.cursor()
 #数値入力
 cur.execute(f"UPDATE sample SET today = {name1} WHERE name = 'notes'")
@@ -43,7 +42,7 @@ conn.commit()
 conn.close()
 
 #############SQL計算#################
-conn = sqlite3.connect(dbname)
+conn = sqlite3.connect(settings.dbname)
 cur = conn.cursor()
 
 # SQL文でデータを取り出す
@@ -61,7 +60,7 @@ print(result)
 conn.close()
 
 ############時間抽出################
-conn = sqlite3.connect(dbname)
+conn = sqlite3.connect(settings.dbname)
 cur = conn.cursor()
 
 sql = "SELECT * FROM time_db"
@@ -77,8 +76,7 @@ dt1 = datetime.datetime.strptime(dt1, '%Y-%m-%d %H:%M:%S.%f')
 
 def nitizi():
     #api取得
-    mk = Misskey("misskey.seitendan.com", i="UeZEaJ09jR9FKI7NHh5vtMaNYKfBxR0a")
-    mk.users_show(user_id="9ib6lbdave")
+    mk.users_show(user_id=settings.AI_ID)
     #時間取得
     dt_now = datetime.datetime.now()
     def progre_time():
@@ -102,7 +100,7 @@ nitizi()
 
 ############SQLYesterday書き込み################
 #データベース操作
-conn = sqlite3.connect(dbname)
+conn = sqlite3.connect(settings.dbname)
 cur = conn.cursor()
 #数値入力
 cur.execute(f"UPDATE sample SET yesterday = {name1} WHERE name = 'notes'")

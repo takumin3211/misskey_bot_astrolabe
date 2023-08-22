@@ -5,15 +5,14 @@ from misskey import Misskey
 import exchange as e
 import os
 import time
+import settings
 
 if e.n == 0:
 	e.n = 1
 
 	print('llm_test01')
-	AI_NAME = 'Astrolabe'
-	llm = Llama(model_path="./model\chronos-13b.ggmlv3.q4_K_M.bin")
-	USER_NAME = 'test_name'
-	#input = 'アメリカで一番大きい都市は？'どこですか
+	llm = Llama(model_path=settings.LLMPATH)
+	#input = 'アメリカで一番大きい都市はどこですか'
 	#print(input_text)
 	print('受け取りデータ')
 	print(e.reply)
@@ -30,13 +29,13 @@ if e.n == 0:
 	print(reply_d)
 
 
-	prompt = (f'''This is a conversation between {USER_NAME} and his cute and helpful assistant {AI_NAME} through SNS.
-	{AI_NAME} is a very helpful assistant and will help {USER_NAME} with anything. They are also very friendly and try to make you feel good.
-	{USER_NAME} are often Japanese people.
-	{AI_NAME}'s profile reads: "I will go with you to the world you want."
-	Hey, it looks like {AI_NAME} got a message.
-	{USER_NAME}:{reply_d}
-	{AI_NAME}:''')
+	prompt = (f'''This is a conversation between {settings.USER_NAME} and his cute and helpful assistant {settings.AI_NAME} through SNS.
+	{settings.AI_NAME} is a very helpful assistant and will help {settings.USER_NAME} with anything. They are also very friendly and try to make you feel good.
+	{settings.USER_NAME} are often Japanese people.
+	{settings.AI_NAME}'s profile reads: "I will go with you to the world you want."
+	Hey, it looks like {settings.AI_NAME} got a message.
+	{settings.USER_NAME}:{reply_d}
+	{settings.AI_NAME}:''')
 
 	print('プロンプト用意完了')
 	print(prompt)
@@ -55,7 +54,7 @@ if e.n == 0:
 	output_a = output["choices"][0]["text"]
 	#print(output_a)
 
-	AI = AI_NAME + ''
+	AI = settings.AI_NAME + ''
 	print('生成完了（生）')
 	print(output_a)
 	#output_b = output_a.replace(AI, '')
