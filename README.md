@@ -1,14 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<style type="text/css">
-body {
-   margin-top:     0px;   /* 外側の余白(上側) */
-   margin-right:  70px;   /* 外側の余白(右側) */
-   margin-bottom: 20px;   /* 外側の余白(下側) */
-   margin-left:    70px;   /* 外側の余白(左側) */
-   padding: 0;    /* 内側の余白を消す(念のため) */
-}
+<style>
 </style>
 </head>
 <body bgcolor="#212121" text="#DCDCDC">
