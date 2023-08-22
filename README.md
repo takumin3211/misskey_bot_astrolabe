@@ -16,7 +16,6 @@
 <p>&nbsp;</p>
 <h2>機能紹介</h2>
 <ul>
-  ![icontest2](https://github.com/takumin3211/misskey_bot_astrolabe/assets/111957094/767c02a1-4b55-4cd7-b78a-200d4fcf822b)
 
 <li>挨拶：おはよう、おやすみの挨拶が出来ます</li>
 <li>日次報告：一日の投稿数や稼働時間をノート出来ます。</li>
