@@ -14,7 +14,7 @@ import exchange as e
 import random
 import settings
 
-#v.0.02.2
+#v.0.02.3
 mk = Misskey(settings.ADRESS, i=settings.TOKEN)
 
 def dt1():
