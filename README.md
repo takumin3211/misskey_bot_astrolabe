@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-<style>
-</style>
 </head>
 <body bgcolor="#212121" text="#DCDCDC">
 <h1 style="text-align: center;">星海天測団プロキシボット「アストロラーベ」</h1>
