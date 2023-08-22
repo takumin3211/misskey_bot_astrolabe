@@ -171,11 +171,12 @@ async def runner():
    }
   }))
 
-
+  
   while True:
    schedule.run_pending()#スケジュール投稿用のコマンド。場所借りてる。
-   data = json.loads(await ws.recv())
+   
    try:
+       data = json.loads(await ws.recv())
        print(data)
        if data['type'] == 'channel':
         if data['body']['type'] == 'note':
