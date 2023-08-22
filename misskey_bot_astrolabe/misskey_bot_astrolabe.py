@@ -14,6 +14,7 @@ import exchange as e
 import random
 import settings
 
+#v.0.02.3
 mk = Misskey(settings.ADRESS, i=settings.TOKEN)
 
 def dt1():
@@ -170,11 +171,12 @@ async def runner():
    }
   }))
 
-
+  
   while True:
    schedule.run_pending()#スケジュール投稿用のコマンド。場所借りてる。
-   data = json.loads(await ws.recv())
+   
    try:
+       data = json.loads(await ws.recv())
        print(data)
        if data['type'] == 'channel':
         if data['body']['type'] == 'note':
@@ -183,7 +185,9 @@ async def runner():
          user = data['body']['body']['user']
          await on_note(note, user)
    except websockets.exceptions.ConnectionClosed:
-      print('Connection closed')
+      print('Connection closed_a')
+   except websockets.exceptions.ConnectionClosedError:
+      print('Connection closed_b')
 
 async def on_note(note,user):
  if note.get('mentions'):
