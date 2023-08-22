@@ -1,4 +1,4 @@
-﻿from misskey import Misskey
+from misskey import Misskey
 import datetime
 import schedule
 from time import sleep
