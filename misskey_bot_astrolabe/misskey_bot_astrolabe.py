@@ -1,4 +1,4 @@
-﻿from misskey import Misskey
+from misskey import Misskey
 import datetime
 import schedule
 from time import sleep
@@ -14,6 +14,7 @@ import exchange as e
 import random
 import settings
 
+#v.0.02.2
 mk = Misskey(settings.ADRESS, i=settings.TOKEN)
 
 def dt1():
@@ -183,7 +184,9 @@ async def runner():
          user = data['body']['body']['user']
          await on_note(note, user)
    except websockets.exceptions.ConnectionClosed:
-      print('Connection closed')
+      print('Connection closed_a')
+   except websockets.exceptions.ConnectionClosedError:
+      print('Connection closed_b')
 
 async def on_note(note,user):
  if note.get('mentions'):
