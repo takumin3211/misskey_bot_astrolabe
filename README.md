@@ -6,6 +6,7 @@
 <body bgcolor="#212121" text="#DCDCDC">
 <h1 style="text-align: center;">星海天測団プロキシボット「アストロラーベ」</h1>
 <p>&nbsp;</p>
+![icontest2](https://github.com/takumin3211/misskey_bot_astrolabe/assets/111957094/767c02a1-4b55-4cd7-b78a-200d4fcf822b)
 <p>&nbsp;</p>
 <h2>自己紹介</h2>
 
