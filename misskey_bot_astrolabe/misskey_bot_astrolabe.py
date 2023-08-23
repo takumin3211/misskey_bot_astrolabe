@@ -13,8 +13,10 @@ import importlib
 import exchange as e
 import random
 import settings
+import feedparser
 
-#v.0.02.2
+
+#v.0.01.03
 mk = Misskey(settings.ADRESS, i=settings.TOKEN)
 
 def dt1():
@@ -56,7 +58,7 @@ class DBReader:
         # n列目のデータのリストを返す
         return column_data
 
-def ohayou():
+async def ohayou():
     	
 	# DBReaderクラスのインスタンスを作成する
 	dbreader = DBReader(settings.dbname, "ohayou")
@@ -86,8 +88,7 @@ def ohayou():
 	#投稿関数
 	mk.notes_create(text=test_a)
 
-
-def oyasumi():
+async def oyasumi():
 		# DBReaderクラスのインスタンスを作成する
 	dbreader = DBReader(settings.dbname, "oyasumi")
 	# 取得したい列番号を定義する
@@ -116,10 +117,35 @@ def oyasumi():
 	#投稿関数
 	mk.notes_create(text=test_a)
 
-def nitizi():
+async def nitizi():
     import nitizi
 
-def test03():
+def rss_pub_a():
+   
+    while True():
+        n= random.randint(1, 10)
+        word_list = ['ビジネス', '年収' , '1位', '批判', '炎上', '漏えい', '性的', '死亡', '逝去', '停止', 'キャンペーン', '特価', 'セール', '期間限定', 'お得', '安い', '割引', '引き']
+        feed = feedparser.parse(settings.RSS_URL_a)
+        url = feed.entries[n].link
+        title_a = feed.entries[n].title
+        def is_include_listed_word(title_a, word_list):
+          for listed_word in word_list:
+           if listed_word in title_a:
+            print()
+           else:
+              text_a = ('あー、あー、これはRSS配信のテストです！\n' + title_a + '\n' + url)
+              mk.notes_create(text=text_a, visibility='home')
+              break
+           return False
+        
+
+    
+    
+    
+    
+   
+
+async def test03():
     print("test03")
 	
 def get_random_time(start_time, end_time):
@@ -149,15 +175,20 @@ MY_ID = mk.i()['id']
 WS_URL_a = 'wss://' + settings.ADRESS + '?i='
 WS_URL = WS_URL_a + settings.TOKEN
 
+
+
+
+schedule.every().days.at(get_random_time("06:10", "06:55")).do(ohayou)
+schedule.every().days.at(get_random_time("23:10", "23:40")).do(oyasumi)
+schedule.every().days.at(get_random_time("23:10", "23:40")).do(nitizi)
+#schedule.every().days.at("21:53").do(rss_pub_a)
+
 async def schedule_coroutine():
     while True:
-        schedule.every().days.at(get_random_time("06:10", "06:55")).do(ohayou)
-        schedule.every().days.at(get_random_time("23:10", "23:40")).do(oyasumi)
-        schedule.every().days.at(get_random_time("23:10", "23:40")).do(nitizi)
         #schedule.every(10).seconds.do(test03)
         schedule.run_pending()
         
-        await asyncio.sleep(10)
+        await asyncio.sleep(1)
 
 async def runner():
  #task1 = asyncio.create_task(schedule_a())
@@ -192,10 +223,9 @@ async def runner():
 async def on_note(note,user):
  if note.get('mentions'):
   if MY_ID in note['mentions']:
-   
    USER_NAME = 'test_name'
-   e.reply = note['text'].replace('@astrolabe', '')
-
+   e.reply = note['text'].replace('@astrolabe ', '')
+   print(e.reply)
    #mk.notes_create(text='解答を生成しているので少し待っていて下さい！＾＾', reply_id=note['id'])############
    #翻訳
    if e.reply.startswith(('help', 'info', '機能')):
@@ -210,8 +240,11 @@ async def on_note(note,user):
 and more......
           
         ''')
-    mk.notes_create(text=info_text, cw='わたくしアストロラーベの機能をご紹介します！', reply_id=note['id'])
-   else:
+    mk.notes_create(text=info_text, cw='わたくしアストロラーベの機能をご紹介します！', visibility=note['visibility'] , reply_id=note['id'])
+    if e.reply.startswith(('opinion', '目安箱', '管理者')):
+       opinion_text = ('ご意見を貰ったのでマスターにお届けします！')
+       print()
+    else:
       print('test04') 
       e.n = 0
       #e.input_text = 'アメリカで一番大きい都市はどこですか？'
@@ -224,7 +257,7 @@ and more......
 	   #LLMpy = LLM()
 	   #output_h = LLMpy.llm(input)
 	   #print(output_h)
-      mk.notes_create(text=output_h, cw='お待たせしました！丹精込めて答えましたよ～！', reply_id=note['id'])
+      mk.notes_create(text=output_h, cw='お待たせしました！丹精込めて答えましたよ～！', visibility=note['visibility'] , reply_id=note['id'])
    
 
 
