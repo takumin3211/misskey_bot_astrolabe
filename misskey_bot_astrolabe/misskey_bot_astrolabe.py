@@ -16,7 +16,7 @@ import settings
 import feedparser
 
 
-Ver = 'v.0.02.00'
+Ver = 'v.0.02.01'
 mk = Misskey(settings.ADRESS, i=settings.TOKEN)
 
 def dt1():
@@ -234,7 +234,7 @@ async def runner():
    
    try:
        data = json.loads(await ws.recv())
-       print(data)
+       #print(data)
        if data['type'] == 'channel':
         if data['body']['type'] == 'note':
      
