@@ -1,4 +1,4 @@
-#!//etc/astrolabe/venv/bin python3
+#!//etc/astrolabe/venv/bin/python3
 
 
 from misskey import Misskey
@@ -19,7 +19,7 @@ import settings
 import feedparser
 
 
-Ver = 'v.0.02.01'
+Ver = 'v.0.02.03'
 mk = Misskey(settings.ADRESS, i=settings.TOKEN)
 
 def dt1():
