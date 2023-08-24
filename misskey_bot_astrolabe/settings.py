@@ -3,7 +3,7 @@ dbname = 'D:/hobby/python/misskey/misskey_bot_astrolabe/misskey_bot_astrolabe/ap
 csvname = 'D:/hobby/python/misskey/misskey_bot_astrolabe/misskey_bot_astrolabe/api.csv'
 AI_NAME = 'Astrolabe'
 AI_ID = '"9ib6lbdave'
-TOKEN = 'UeZEaJ09jR9FKI7NHh5vtMaNYKfBxR0a'
+TOKEN = 'ーーーー'
 ADRESS = 'misskey.seitendan.com'
 
 USER_NAME = 'test_name'
