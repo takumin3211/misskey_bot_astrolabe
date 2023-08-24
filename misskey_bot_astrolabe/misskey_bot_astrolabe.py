@@ -1,3 +1,6 @@
+#!//etc/astrolabe/venv/bin python3
+
+
 from misskey import Misskey
 import datetime
 import schedule
