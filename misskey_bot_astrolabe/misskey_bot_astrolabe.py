@@ -16,7 +16,7 @@ import settings
 import feedparser
 
 
-#v.0.01.03
+Ver = 'v.0.02.00'
 mk = Misskey(settings.ADRESS, i=settings.TOKEN)
 
 def dt1():
@@ -65,20 +65,20 @@ async def ohayou():
 	# 取得したい列番号を定義する
 	column_a = 2
 	column_b = 3
-	column_c = 4
+	#column_c = 4
 	# n列目のデータのリストを取得する
 	column_data_a = dbreader.get_column(column_a)
 	column_data_b = dbreader.get_column(column_b)
-	column_data_c = dbreader.get_column(column_c)
+	#column_data_c = dbreader.get_column(column_c)
     # リストの内容を表示する
 	#print(column_data_b)
 	test = random.choices(column_data_a, weights=column_data_b)
-	test2_a = random.choices(column_data_c)
-	test2 = test2_a.pop(0)
-	test3 = random.randint(0, 10)
+	#test2_a = random.choices(column_data_c)
+	#test2 = test2_a.pop(0)
+	#test3 = random.randint(0, 10)
 	#print(test3)
 	#print(test2)
-	sleep_a = test2 + test3 * 60
+	#sleep_a = test2 + test3 * 60
 	#sleep(sleep_a)
 	#print(test)
 	# Misskey投稿
@@ -94,20 +94,20 @@ async def oyasumi():
 	# 取得したい列番号を定義する
 	column_a = 2
 	column_b = 3
-	column_c = 4
+	#column_c = 4
 	# n列目のデータのリストを取得する
 	column_data_a = dbreader.get_column(column_a)
 	column_data_b = dbreader.get_column(column_b)
-	column_data_c = dbreader.get_column(column_c)
+	#column_data_c = dbreader.get_column(column_c)
     # リストの内容を表示する
 	#print(column_data_b)
 	test = random.choices(column_data_a, weights=column_data_b)
-	test2_a = random.choices(column_data_c)
-	test2 = test2_a.pop(0)
-	test3 = random.randint(0, 10)
+	#test2_a = random.choices(column_data_c)
+	#test2 = test2_a.pop(0)
+	#test3 = random.randint(0, 10)
 	#print(test3)
 	#print(test2)
-	sleep_a = test2 + test3 * 60
+	#sleep_a = test2 + test3 * 60
 	#sleep(sleep_a)
 	#print(test)
 	# Misskey投稿
@@ -120,24 +120,50 @@ async def oyasumi():
 async def nitizi():
     import nitizi
 
-def rss_pub_a():
-   
-    while True():
+def rss_a():
+    dbreader = DBReader(settings.dbname, "rssqa_1")
+    dbreader_a = DBReader(settings.dbname, "rss_reaction_1")
+    # 取得したい列番号を定義する
+    column_a = 0
+    column_b = 1
+    column_c = 2
+    # QAWord
+    column_data_a = dbreader.get_column(column_a)
+    # Reaction and waight
+    column_data_a_a = dbreader_a.get_column(column_a)
+    #print(column_data_a_a)
+    column_data_a_b = dbreader_a.get_column(column_c)
+    #print(column_data_a_b)
+    test = random.choices(column_data_a_b, weights=column_data_a_a)
+    test = str(test).replace("['", "").replace("']", "")
+    
+    #print(test)
+    n_a = 0
+    while True:
+
         n= random.randint(1, 10)
-        word_list = ['ビジネス', '年収' , '1位', '批判', '炎上', '漏えい', '性的', '死亡', '逝去', '停止', 'キャンペーン', '特価', 'セール', '期間限定', 'お得', '安い', '割引', '引き']
         feed = feedparser.parse(settings.RSS_URL_a)
         url = feed.entries[n].link
         title_a = feed.entries[n].title
-        def is_include_listed_word(title_a, word_list):
-          for listed_word in word_list:
-           if listed_word in title_a:
-            print()
-           else:
-              text_a = ('あー、あー、これはRSS配信のテストです！\n' + title_a + '\n' + url)
-              mk.notes_create(text=text_a, visibility='home')
-              break
-           return False
-        
+        #print(column_data_a)
+        # リストの内容を表示する
+        judge = (any(x in title_a for x in column_data_a))
+        if n_a <= 10:
+            if judge:
+                #print(title_a)    
+                #print('test1') 
+                n_a = n_a + 1
+                continue
+            else :
+                #print(title_a)     
+                #print('test2')  
+                n_a = n_a + 1
+                text_a = (test + '\n\n\n' + title_a + '\n' + url)
+                #print(text_a)
+                mk.notes_create(text=text_a, visibility='home')
+                break
+        elif n_a >= 10:
+            break    
 
     
     
@@ -181,7 +207,7 @@ WS_URL = WS_URL_a + settings.TOKEN
 schedule.every().days.at(get_random_time("06:10", "06:55")).do(ohayou)
 schedule.every().days.at(get_random_time("23:10", "23:40")).do(oyasumi)
 schedule.every().days.at(get_random_time("23:10", "23:40")).do(nitizi)
-#schedule.every().days.at("21:53").do(rss_pub_a)
+schedule.every().days.at("12:53").do(rss_a)
 
 async def schedule_coroutine():
     while True:
@@ -241,10 +267,12 @@ and more......
           
         ''')
     mk.notes_create(text=info_text, cw='わたくしアストロラーベの機能をご紹介します！', visibility=note['visibility'] , reply_id=note['id'])
-    if e.reply.startswith(('opinion', '目安箱', '管理者')):
-       opinion_text = ('ご意見を貰ったのでマスターにお届けします！')
-       print()
-    else:
+   elif e.reply.startswith(('Version', 'バージョン', '世代', '死活')):
+       dt1 = datetime.datetime.now()
+       dt1 = str(dt1)
+       opinion_text = ('アストロラーベは稼働中です\n' + dt1 + '\n' + Ver )
+       mk.notes_create(text=opinion_text, visibility=note['visibility'] , reply_id=note['id'])
+   else:
       print('test04') 
       e.n = 0
       #e.input_text = 'アメリカで一番大きい都市はどこですか？'
