@@ -6,16 +6,19 @@ import exchange as e
 import os
 import time
 import settings
+from logging import getLogger, Formatter, StreamHandler, FileHandler, DEBUG, INFO
+logger = getLogger('astrolabe_logs.llm_process')
+
 
 if e.n == 0:
 	e.n = 1
-
-	print('llm_test01')
+	logger.info("llm_process start")
+	#print('llm_test01')
 	llm = Llama(model_path=settings.LLMPATH)
 	#input = 'アメリカで一番大きい都市はどこですか'
 	#print(input_text)
-	print('受け取りデータ')
-	print(e.reply)
+	logger.debug('text_receive')
+	logger.debug(e.reply)
 	e.reply = e.reply.replace('にゃ', 'な')
 
 
@@ -25,8 +28,8 @@ if e.n == 0:
 	reply_c = reply_b.replace('[{"translation_text": "', '')
 	reply_d = reply_c.replace('"}]', '')
 	#print(reply)
-	print('翻訳完了')
-	print(reply_d)
+	logger.info('trasn_j2e_clear')
+	logger.debug(reply_d)
 
 
 	prompt = (f'''This is a conversation between {settings.USER_NAME} and his cute and helpful assistant {settings.AI_NAME} through SNS.
@@ -37,8 +40,8 @@ if e.n == 0:
 	{settings.USER_NAME}:{reply_d}
 	{settings.AI_NAME}:''')
 
-	print('プロンプト用意完了')
-	print(prompt)
+	logger.debug('prompt_clear')
+	logger.debug(prompt)
 
 
 	# 推論の実行
@@ -55,8 +58,8 @@ if e.n == 0:
 	#print(output_a)
 
 	AI = settings.AI_NAME + ''
-	print('生成完了（生）')
-	print(output_a)
+	logger.debug('generate_text(row)')
+	logger.debug(output_a)
 	#output_b = output_a.replace(AI, '')
 	#reply_a = json.dumps(reply)#delete
 	output_c = output_a.replace(prompt, '')
@@ -66,8 +69,8 @@ if e.n == 0:
 	input_text = output_c
 	ej_translator = pipeline("translation", model="staka/fugumt-en-ja")
 
-	print('翻訳投入文')
-	print(input_text)
+	logger.debug('trasn_e2j_clear')
+	logger.debug(input_text)
 
 	output_d =ej_translator(input_text)
 	'''
@@ -86,10 +89,10 @@ if e.n == 0:
 
 
 	#return output_h
-	print('最終生成テキスト')
-	print(output_h)
+	logger.debug('final_generation_text')
+	logger.debug(output_h)
 
 	
 	
 else:
-    print('制御を返却します')
+	logger.info('return_control_to_main')
