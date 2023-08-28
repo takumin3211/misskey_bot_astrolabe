@@ -17,19 +17,29 @@ import exchange as e
 import random
 import settings
 import feedparser
+import os
+import psutil
+import re
 
 
 
 
-
-Ver = 'v.0.03.00'
+Ver = 'v.0.04.01'
 
 logger = getLogger('astrolabe_logs')
 
 def dt1():
-
+    #時間取得
     dt1 = datetime.datetime.now()
-    dt2 = (str(dt1.strftime('%Y%m%d%H%M%S'))) + '.log'
+    #フォルダ生成系
+    log_path = settings.PATH + '/log'
+    model_path = settings.PATH + '/model'
+    new_dir_path_recursive = log_path
+    new_dir_path_recursive_a = model_path
+    os.makedirs(new_dir_path_recursive, exist_ok=True)
+    os.makedirs(new_dir_path_recursive_a, exist_ok=True)
+    #ログ準備系
+    #dt2 = (str(dt1.strftime('%Y%m%d%H%M%S'))) + '.log'
     dt2 = settings.PATH + '/log/' + (str(dt1.strftime('%Y%m%d%H%M%S'))) + '.log'
     logger.setLevel(INFO)
     fl_handler = FileHandler(filename= dt2 , encoding="utf-8")
@@ -38,6 +48,9 @@ def dt1():
     logger.addHandler(fl_handler)
     logger.info("logging start")
     
+
+
+    #DB記録系
     conn = sqlite3.connect(settings.dbname)
     cur = conn.cursor()
     cur.execute("UPDATE time_db SET time = ? WHERE name = 'first_time'", (dt1,))
@@ -48,12 +61,13 @@ def dt1():
     conn.commit()
     cur.close()
     conn.close()
+    #ログ系
     logger.info("def_dt1 clear")
     logger.info("ALos_sys_booting_now!")
     logger.info(Ver)
     print("ALos_sys_booting_now!")
     
-dt1()
+dt1()#起動時のみの動作を内部に書く
 
 mk = Misskey(settings.ADRESS, i=settings.TOKEN)
 
@@ -103,7 +117,7 @@ async def ohayou():
 	#sleep(sleep_a)
 	#print(test)
 	# Misskey投稿
-	timer = random.randint(0, 20) * 60
+	timer = random.randint(0, 50)
 	
 	await asyncio.sleep(timer)
 	
@@ -136,18 +150,19 @@ async def oyasumi():
 	#print(test)
 	# Misskey投稿
 	
-	timer = random.randint(0, 20) * 60
-	
+	timer = random.randint(0, 50)
 	await asyncio.sleep(timer)    
 	test_a = (test)
 	#投稿関数
 	mk.notes_create(text=test_a)
-	timer2 = random.randint(0, 240)
-	await asyncio.sllep(timer2)
+	timer2 = random.randint(0, 50)
+	await asyncio.sleep(timer2)
 	import nitizi
-	logger.info("def_oyasumi clear")        
+	logger.info("def_oyasumi clear")  
+	return 'test'
 
-def rss_a():
+
+async def rss_a():
     dbreader = DBReader(settings.dbname, "rssqa_1")
     dbreader_a = DBReader(settings.dbname, "rss_reaction_1")
     # 取得したい列番号を定義する
@@ -163,6 +178,9 @@ def rss_a():
     #print(column_data_a_b)
     test = random.choices(column_data_a_b, weights=column_data_a_a)
     test = str(test).replace("['", "").replace("']", "")
+    
+    timer = random.randint(0, 50)
+    await asyncio.sleep(timer) 
     
     #print(test)
     n_a = 0
@@ -194,21 +212,80 @@ def rss_a():
             logger.info("def_rss clear(Over_10)")    
             break    
 
+def sys_check():
+    cpu_per = (psutil.cpu_percent(interval=1, percpu=True))
+    cpu_per_a = max(cpu_per)
+    usage = (psutil.disk_usage(path='/').percent)
+    if usage >= 90.0:
+       usage_a = 'ディスク使用率が90％を超過したことを検知しました。\nシステムに影響を及ぼす可能性があります。\n' + '現在使用率:' + usage + '％'
+       mk.notes_create(text=usage_a, visibility='home')
+       logger.warning("def_sys_check diskuse(Over_90)")
+       pass
+    else:
+       pass
+    if cpu_per_a >= 90.0:
+       cpu_per_a_a =  'CPU論理プロセッサの最大利用率が90％を超過したことを検知しました。\nシステムに影響を及ぼす可能性があります。\n' + '現在使用率:' +  cpu_per_a + '％'
+       mk.notes_create(text=cpu_per_a_a, visibility='home')
+       logger.warning("def_sys_check cpu_max_per(Over_90)")
+    else:
+       pass
+
+
+
+async def asy_test():
+    await asyncio.sleep(5)
+    print('async test')
+
    
 MY_ID = mk.i()['id']
 WS_URL_a = 'wss://' + settings.ADRESS + '?i='
 WS_URL = WS_URL_a + settings.TOKEN
 
-schedule.every().days.at("06:30").do(ohayou)
-schedule.every().days.at("23:10").do(oyasumi)
-schedule.every(21600).to(28800).seconds.do(rss_a)
-
 async def schedule_coroutine():
+
     while True:
-        #schedule.every(10).seconds.do(test03)
-        schedule.run_pending()
-        
-        await asyncio.sleep(1)
+       #時間管理
+       ohayou = str('06') + str(random.randint(0, 59))
+       oyasumi = str('23') + str(random.randint(0, 59))
+       sys_check = '04:00'
+       rss_a = str(random.randint(12, 13)) + str(random.randint(0, 59))
+       
+       #動作制御
+       n_a = 0#おはよう
+       n_b = 0#おやすみ
+       n_c = 0#システムチェック
+       n_d = 0#RSS_A
+       n_test = 1#async def test直結
+       n_date = 1#リセット用(1で正常。23:58に起こす)
+       while True:
+           dt = datetime.datetime.now()
+           dt_a = (str(dt.strftime('%H:%M')))
+           if dt_a == ohayou and n_a == 0:
+              n_a = n_a + 1
+              await ohayou()
+           elif dt_a == oyasumi and n_b == 0:
+               n_b = n_b + 1
+               await oyasumi()
+           elif dt_a == sys_check and n_c == 0:
+               n_c = n_c + 1
+               await sys_check()
+           elif dt_a ==  rss_a and n_d == 0:
+               n_d = n_b + 1
+               await rss_a()
+           elif dt_a == 'test' and n_test == 0:
+              print(type(n_test))
+              n_test = n_test + 1
+              await asy_test()
+
+           #以後周回処理
+           elif dt_a == '23:58':
+               n_date = 0
+           elif dt_a == '00:00' and n_date == 0:
+               break
+           else:
+              pass
+           await asyncio.sleep(10)
+       continue
 
 async def runner():
  #task1 = asyncio.create_task(schedule_a())
@@ -222,11 +299,7 @@ async def runner():
    }
   }))
 
-  
-  while True:
-   schedule.run_pending()#スケジュール投稿用のコマンド。場所借りてる。
-   
-   try:
+  try:
        data = json.loads(await ws.recv())
        logger.debug(data)    
        if data['type'] == 'channel':
@@ -235,9 +308,9 @@ async def runner():
          note = data['body']['body']
          user = data['body']['body']['user']
          await on_note(note, user)
-   except websockets.exceptions.ConnectionClosed:
+  except websockets.exceptions.ConnectionClosed:
       logger.error('Connection closed_a')
-   except websockets.exceptions.ConnectionClosedError:
+  except websockets.exceptions.ConnectionClosedError:
       logger.error('Connection closed_b')
 
 async def on_note(note,user):
@@ -284,25 +357,78 @@ and more......
 	   #output_h = LLMpy.llm(input)
 	   #print(output_h)
       mk.notes_create(text=output_h, cw='お待たせしました！丹精込めて答えましたよ～！', visibility=note['visibility'] , reply_id=note['id'])
-      logger.info('lmm_post')  
-   
-
+      logger.info('lmm_post')
+ try:
+    if 'アストロラーベちゃん' in note['text']:
+        test = random.choices([1, 2], weights=[1, 4])
+        test = 1
+        #print('test')
+        logger.debug('detection_astrolabe')
+        if test == 1:
+            await asyncio.sleep(4)    
+            logger.debug('reply_yobidashi')
+            mk.notes_create(text='呼びましたか？？', reply_id=note['id'])
+            pass
+    else:
+        logger.debug('not_detection_astrolabe')
+        scan_list_ohayou = r'ohayou|おはよう|おきた|起床'
+        scan_list_oyasumi = r'ohayou|おはよう|おきた|起床'
+        scan_list_kawaii = r'カワイイ|可愛い|かわいい'
+        scan_list_oishii = r'美味しい|おいしい|おいしみ'
+        scan_list_tiken = r'知見があっぷ|知見がアップ|rs_tiken_up|ちけんがあっぷ|なんだ|らしい|にゃんだ'
+        scan_list_gohan = r'ごはん|おひる|よるごはん|あさごはん|朝ご飯|お昼|夜ご飯'
+        if (re.compile(scan_list_ohayou)).search(note['text']):
+            timer = (random.randint(4, 360))
+            await asyncio.sleep(timer) 
+            test = str(random.choices(settings.note_list_ohayou)).replace("['", "").replace("']", "") 
+            mk.notes_reactions_create(note_id=note['id'], reaction=test)
+            logger.debug('reaction_ohayou')
+        elif (re.compile(scan_list_oyasumi)).search(note['text']):
+            timer = (random.randint(4, 360))
+            await asyncio.sleep(timer) 
+            test = str(random.choices(settings.note_list_oyasumi)).replace("['", "").replace("']", "") 
+            mk.notes_reactions_create(note_id=note['id'], reaction=test)
+            logger.debug('reaction_oyasumi')
+        elif (re.compile(scan_list_kawaii)).search(note['text']):
+            timer = (random.randint(4, 360))
+            await asyncio.sleep(timer) 
+            test = str(random.choices(settings.note_list_kawaii)).replace("['", "").replace("']", "") 
+            mk.notes_reactions_create(note_id=note['id'], reaction=test)
+            logger.debug('reaction_kawaii')
+        elif (re.compile(scan_list_oishii)).search(note['text']):
+            timer = (random.randint(4, 360))
+            await asyncio.sleep(timer) 
+            test = str(random.choices(settings.note_list_oishii)).replace("['", "").replace("']", "") 
+            mk.notes_reactions_create(note_id=note['id'], reaction=test)
+            logger.debug('reaction_oishii')
+        elif (re.compile(scan_list_tiken)).search(note['text']):
+            timer = (random.randint(4, 360))
+            await asyncio.sleep(timer) 
+            test = str(random.choices(settings.note_list_tiken)).replace("['", "").replace("']", "") 
+            mk.notes_reactions_create(note_id=note['id'], reaction=test)
+            logger.debug('reaction_tiken')
+        elif (re.compile(scan_list_gohan)).search(note['text']):
+            timer = (random.randint(4, 360))
+            await asyncio.sleep(timer) 
+            test = str(random.choices(settings.note_list_gohan)).replace("['", "").replace("']", "") 
+            mk.notes_reactions_create(note_id=note['id'], reaction=test)
+            logger.debug('reaction_gohan')
+            #mk.notes_reactions_create(note_id=note['id'], reaction=':kawaii_comment:')
+        else:
+            logger.debug('not_conditions_reaction')
+            pass
+ except Exception:
+     import traceback
+     traceback.print_exc()
+     
+     logger.debug('occurrence_exception')
+     pass
 
 async def main():
     await asyncio.gather(runner(), schedule_coroutine())
-
 
 if __name__ == "__main__":
 
 	asyncio.run(main()) 
 
-
-# 日次スケージュリング投稿(本番)
-# 時間判定
-
 logger.info('all_code_read') 
-
-
-#常駐化
-
-

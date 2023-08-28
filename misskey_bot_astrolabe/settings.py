@@ -19,3 +19,11 @@ FORMAT = "%(levelname)-9s  %(asctime)s [%(filename)s:%(lineno)d] %(message)s"
 
 
 RSS_URL_a = 'https://rss.itmedia.co.jp/rss/2.0/itmedia_all.xml'
+
+note_list_ohayou = [':ohayoo:']
+note_list_oyasumi = [':oyasumi2:', ':neru_purikone_anime:']
+note_list_kawaii = [':emoemo2_nizigasaki_anime:', ':kawaii_comment:', ':kawwa_comment:']
+note_list_oishii = [':oishimi_text:', ':unnmenya_wug_anime:']
+note_list_tiken = ['rs_tiken_up:']
+note_list_gohan = [':taberux2_kouhuku_anime:', ':oishimi_text:', ':gokugoku_comment:', ':unnmenya_wug_anime:']
+
