@@ -20,11 +20,12 @@ import feedparser
 import os
 import psutil
 import re
+import sys
 
 
 
 
-Ver = 'v.0.04.01'
+Ver = 'v.0.04.02'
 
 logger = getLogger('astrolabe_logs')
 
@@ -41,9 +42,9 @@ def dt1():
     #ログ準備系
     #dt2 = (str(dt1.strftime('%Y%m%d%H%M%S'))) + '.log'
     dt2 = settings.PATH + '/log/' + (str(dt1.strftime('%Y%m%d%H%M%S'))) + '.log'
-    logger.setLevel(INFO)
+    logger.setLevel(DEBUG)
     fl_handler = FileHandler(filename= dt2 , encoding="utf-8")
-    fl_handler.setLevel(INFO)
+    fl_handler.setLevel(DEBUG)
     fl_handler.setFormatter(Formatter(settings.FORMAT))
     logger.addHandler(fl_handler)
     logger.info("logging start")
@@ -71,13 +72,14 @@ dt1()#起動時のみの動作を内部に書く
 
 mk = Misskey(settings.ADRESS, i=settings.TOKEN)
 
-class DBReader:
+class DBReader:  
     def __init__(self, dbname, tablename):
         # データベース名とテーブル名を属性として保存する
         self.dbname = dbname
         self.tablename = tablename
 
     def get_column(self, column_a):
+        logger.debug('DBReader_read')  
         # データベースに接続する
         conn = sqlite3.connect(self.dbname)
         # カーソルを作成する
@@ -212,7 +214,7 @@ async def rss_a():
             logger.info("def_rss clear(Over_10)")    
             break    
 
-def sys_check():
+async def sys_check():
     cpu_per = (psutil.cpu_percent(interval=1, percpu=True))
     cpu_per_a = max(cpu_per)
     usage = (psutil.disk_usage(path='/').percent)
@@ -228,6 +230,9 @@ def sys_check():
        mk.notes_create(text=cpu_per_a_a, visibility='home')
        logger.warning("def_sys_check cpu_max_per(Over_90)")
     else:
+       logger.debug(cpu_per_a)  
+       logger.debug(usage)  
+       logger.debug('syscheck_pass')  
        pass
 
 
@@ -245,6 +250,7 @@ async def schedule_coroutine():
 
     while True:
        #時間管理
+       logger.debug('1st_circ')
        ohayou = str('06') + str(random.randint(0, 59))
        oyasumi = str('23') + str(random.randint(0, 59))
        sys_check = '04:00'
@@ -262,25 +268,32 @@ async def schedule_coroutine():
            dt_a = (str(dt.strftime('%H:%M')))
            if dt_a == ohayou and n_a == 0:
               n_a = n_a + 1
+              logger.debug('wakeup_ohayou')
               await ohayou()
            elif dt_a == oyasumi and n_b == 0:
+               logger.debug('wakeup_oyasumi')
                n_b = n_b + 1
                await oyasumi()
            elif dt_a == sys_check and n_c == 0:
                n_c = n_c + 1
+               logger.debug('wakeup_sys_check')
                await sys_check()
            elif dt_a ==  rss_a and n_d == 0:
                n_d = n_b + 1
+               logger.debug('wakeup_rss_a')
                await rss_a()
            elif dt_a == 'test' and n_test == 0:
               print(type(n_test))
               n_test = n_test + 1
+              logger.debug('wakeup_asy_test')
               await asy_test()
 
            #以後周回処理
            elif dt_a == '23:58':
+               logger.debug('circle1')  
                n_date = 0
            elif dt_a == '00:00' and n_date == 0:
+               logger.debug('circle_break')
                break
            else:
               pass
@@ -314,8 +327,11 @@ async def runner():
       logger.error('Connection closed_b')
 
 async def on_note(note,user):
+ logger.debug('async_def_onnote')  
  if note.get('mentions'):
+  logger.debug('scan_mention')  
   if MY_ID in note['mentions']:
+   logger.debug('scan_mention_myid')  
    USER_NAME = 'test_name'
    e.reply = note['text'].replace('@astrolabe ', '')
    logger.debug(e.reply) 
@@ -335,6 +351,10 @@ and more......
         ''')
     mk.notes_create(text=info_text, cw='わたくしアストロラーベの機能をご紹介します！', visibility=note['visibility'] , reply_id=note['id'])
     logger.debug('help_post')  
+   elif e.reply.startswith(('停止', 'stop', '終了')):
+       
+       mk.notes_create(text='システムを終了します', visibility=note['visibility'] , reply_id=note['id'])
+       sys.exit()
    elif e.reply.startswith(('Version', 'バージョン', '世代', '死活')):
        dt1 = datetime.datetime.now()
        dt1 =(str(dt1.strftime('%Y年%m月%d日%H時%M分%S秒')))
@@ -358,71 +378,74 @@ and more......
 	   #print(output_h)
       mk.notes_create(text=output_h, cw='お待たせしました！丹精込めて答えましたよ～！', visibility=note['visibility'] , reply_id=note['id'])
       logger.info('lmm_post')
- try:
-    if 'アストロラーベちゃん' in note['text']:
-        test = random.choices([1, 2], weights=[1, 4])
-        test = 1
-        #print('test')
-        logger.debug('detection_astrolabe')
-        if test == 1:
-            await asyncio.sleep(4)    
-            logger.debug('reply_yobidashi')
-            mk.notes_create(text='呼びましたか？？', reply_id=note['id'])
-            pass
-    else:
-        logger.debug('not_detection_astrolabe')
-        scan_list_ohayou = r'ohayou|おはよう|おきた|起床'
-        scan_list_oyasumi = r'ohayou|おはよう|おきた|起床'
-        scan_list_kawaii = r'カワイイ|可愛い|かわいい'
-        scan_list_oishii = r'美味しい|おいしい|おいしみ'
-        scan_list_tiken = r'知見があっぷ|知見がアップ|rs_tiken_up|ちけんがあっぷ|なんだ|らしい|にゃんだ'
-        scan_list_gohan = r'ごはん|おひる|よるごはん|あさごはん|朝ご飯|お昼|夜ご飯'
-        if (re.compile(scan_list_ohayou)).search(note['text']):
-            timer = (random.randint(4, 360))
-            await asyncio.sleep(timer) 
-            test = str(random.choices(settings.note_list_ohayou)).replace("['", "").replace("']", "") 
-            mk.notes_reactions_create(note_id=note['id'], reaction=test)
-            logger.debug('reaction_ohayou')
-        elif (re.compile(scan_list_oyasumi)).search(note['text']):
-            timer = (random.randint(4, 360))
-            await asyncio.sleep(timer) 
-            test = str(random.choices(settings.note_list_oyasumi)).replace("['", "").replace("']", "") 
-            mk.notes_reactions_create(note_id=note['id'], reaction=test)
-            logger.debug('reaction_oyasumi')
-        elif (re.compile(scan_list_kawaii)).search(note['text']):
-            timer = (random.randint(4, 360))
-            await asyncio.sleep(timer) 
-            test = str(random.choices(settings.note_list_kawaii)).replace("['", "").replace("']", "") 
-            mk.notes_reactions_create(note_id=note['id'], reaction=test)
-            logger.debug('reaction_kawaii')
-        elif (re.compile(scan_list_oishii)).search(note['text']):
-            timer = (random.randint(4, 360))
-            await asyncio.sleep(timer) 
-            test = str(random.choices(settings.note_list_oishii)).replace("['", "").replace("']", "") 
-            mk.notes_reactions_create(note_id=note['id'], reaction=test)
-            logger.debug('reaction_oishii')
-        elif (re.compile(scan_list_tiken)).search(note['text']):
-            timer = (random.randint(4, 360))
-            await asyncio.sleep(timer) 
-            test = str(random.choices(settings.note_list_tiken)).replace("['", "").replace("']", "") 
-            mk.notes_reactions_create(note_id=note['id'], reaction=test)
-            logger.debug('reaction_tiken')
-        elif (re.compile(scan_list_gohan)).search(note['text']):
-            timer = (random.randint(4, 360))
-            await asyncio.sleep(timer) 
-            test = str(random.choices(settings.note_list_gohan)).replace("['", "").replace("']", "") 
-            mk.notes_reactions_create(note_id=note['id'], reaction=test)
-            logger.debug('reaction_gohan')
-            #mk.notes_reactions_create(note_id=note['id'], reaction=':kawaii_comment:')
+ else :
+     logger.debug('not_scan_mention')  
+     try:
+        if 'アストロラーベちゃん' in note['text']:
+            test = random.choices([1, 2], weights=[1, 4])
+            test = 1
+            #print('test')
+            logger.debug('detection_astrolabe')
+            if test == 1:
+                await asyncio.sleep(4)    
+                logger.debug('reply_yobidashi')
+                mk.notes_create(text='呼びましたか？？', reply_id=note['id'])
+                pass
         else:
-            logger.debug('not_conditions_reaction')
-            pass
- except Exception:
-     import traceback
-     traceback.print_exc()
+            logger.debug('not_detection_astrolabe')
+            scan_list_ohayou = r'ohayou|おはよう|おきた|起床'
+            scan_list_oyasumi = r'ohayou|おはよう|おきた|起床'
+            scan_list_kawaii = r'カワイイ|可愛い|かわいい'
+            scan_list_oishii = r'美味しい|おいしい|おいしみ'
+            scan_list_tiken = r'知見があっぷ|知見がアップ|rs_tiken_up|ちけんがあっぷ|なんだ|らしい|にゃんだ'
+            scan_list_gohan = r'ごはん|おひる|よるごはん|あさごはん|朝ご飯|お昼|夜ご飯'
+            if (re.compile(scan_list_ohayou)).search(note['text']):
+                #print('test')
+                timer = (random.randint(4, 360))
+                await asyncio.sleep(timer) 
+                test = str(random.choices(settings.note_list_ohayou)).replace("['", "").replace("']", "") 
+                mk.notes_reactions_create(note_id=note['id'], reaction=test)
+                logger.debug('reaction_ohayou')
+            elif (re.compile(scan_list_oyasumi)).search(note['text']):
+                timer = (random.randint(4, 360))
+                await asyncio.sleep(timer) 
+                test = str(random.choices(settings.note_list_oyasumi)).replace("['", "").replace("']", "") 
+                mk.notes_reactions_create(note_id=note['id'], reaction=test)
+                logger.debug('reaction_oyasumi')
+            elif (re.compile(scan_list_kawaii)).search(note['text']):
+                timer = (random.randint(4, 360))
+                await asyncio.sleep(timer) 
+                test = str(random.choices(settings.note_list_kawaii)).replace("['", "").replace("']", "") 
+                mk.notes_reactions_create(note_id=note['id'], reaction=test)
+                logger.debug('reaction_kawaii')
+            elif (re.compile(scan_list_oishii)).search(note['text']):
+                timer = (random.randint(4, 360))
+                await asyncio.sleep(timer) 
+                test = str(random.choices(settings.note_list_oishii)).replace("['", "").replace("']", "") 
+                mk.notes_reactions_create(note_id=note['id'], reaction=test)
+                logger.debug('reaction_oishii')
+            elif (re.compile(scan_list_tiken)).search(note['text']):
+                timer = (random.randint(4, 360))
+                await asyncio.sleep(timer) 
+                test = str(random.choices(settings.note_list_tiken)).replace("['", "").replace("']", "") 
+                mk.notes_reactions_create(note_id=note['id'], reaction=test)
+                logger.debug('reaction_tiken')
+            elif (re.compile(scan_list_gohan)).search(note['text']):
+                timer = (random.randint(4, 360))
+                await asyncio.sleep(timer) 
+                test = str(random.choices(settings.note_list_gohan)).replace("['", "").replace("']", "") 
+                mk.notes_reactions_create(note_id=note['id'], reaction=test)
+                logger.debug('reaction_gohan')
+                #mk.notes_reactions_create(note_id=note['id'], reaction=':kawaii_comment:')
+            else:
+                logger.debug('not_conditions_reaction')
+                pass
+     except Exception:
+         import traceback
+         traceback.print_exc()
      
-     logger.debug('occurrence_exception')
-     pass
+         logger.debug('occurrence_exception')
+         pass
 
 async def main():
     await asyncio.gather(runner(), schedule_coroutine())
