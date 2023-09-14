@@ -14,6 +14,7 @@ import os
 import re
 import sys
 
+#print('test')
 
 #logger = getLogger('astrolabe_logs')
 
@@ -46,6 +47,9 @@ def dt1():
     #(sys.executable)
     #print(settings.alosname)
     #print(sys.argv)
+    print('アストロラーベのプロセスが始動しました。')
+    print(dt1)
+    time.sleep(5)
     os.execv(sys.executable, ['python '] + [settings.alosname])
     
     #os.exit

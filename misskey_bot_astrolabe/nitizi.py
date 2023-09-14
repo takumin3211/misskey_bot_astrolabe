@@ -86,9 +86,14 @@ def nitizi():
     logger.info('post_nitizi')
     sql = "SELECT * FROM sample"
     cur.execute(sql)
-    cur.execute(f"UPDATE sample SET today = {name1_y} WHERE name = 'notes'")
-    cur.execute(f"UPDATE sample SET today = {name2_y} WHERE name = 'followers'")
-    cur.execute(f"UPDATE sample SET today = {name3_y} WHERE name = 'following'")
+    cur.execute(f"UPDATE sample SET today = {name1} WHERE name = 'notes'")
+    cur.execute(f"UPDATE sample SET today = {name2} WHERE name = 'followers'")
+    cur.execute(f"UPDATE sample SET today = {name3} WHERE name = 'following'")
+    df = pd.read_sql_query(sql, conn)
+    logger.debug(df)
+    conn.commit()
+    cur.close()
+    conn.close()
     logger.debug('nitizi_db_write_ok')
 
 
@@ -100,7 +105,7 @@ nitizi()
 
 
 
-df = pd.read_sql_query(sql, conn)
+#df = pd.read_sql_query(sql, conn)
 #print(df)
 
 
