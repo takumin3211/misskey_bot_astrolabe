@@ -22,10 +22,13 @@ import psutil
 import re
 import sys
 import traceback
+import MeCab
+import markovify
+import emoji
 
 
 
-Ver = 'v.0.06.02'
+Ver = 'v.0.07.00'
 
 logger = getLogger('astrolabe_logs')
 
@@ -76,6 +79,7 @@ def dt1():
     
 dt1()#起動時のみの動作を内部に書く
 
+###########class###############
 
 class DBReader:  
     def __init__(self, dbname, tablename):
@@ -99,6 +103,206 @@ class DBReader:
         conn.close()
         # n列目のデータのリストを返す
         return column_data
+
+###########markov##############
+
+async def global_runner():#グローバル受信系
+    #task1 = asyncio.create_task(schedule_a())
+    #await task1
+    async with websockets.connect(WS_URL) as ws:
+        g_n = 0
+        buf_gr = ''
+        buf_gr_1 = ''
+        try:
+            await ws.send(json.dumps({
+            "type": "connect",
+            "body": {
+                   "channel": "globalTimeline",
+                   "id": "test"
+                   }
+            }))
+            data = json.loads(await ws.recv())
+            #logger.debug(data)    
+            while True:
+                   
+                try:
+                    
+                    data = json.loads(await ws.recv())
+                    #logger.debug(data)    
+                    if data['type'] == 'channel':
+                        if data['body']['type'] == 'note': 
+                            note = data['body']['body']
+                            buf_note =  note['text']
+                            buf_gr_1 += buf_note
+                            node = buf_note + '。\n'
+                            node = node.replace('。。', '。').replace('$', '')
+                            node = re.sub(r'。', '。\n', node, flags=re.MULTILINE)#文中読点の改行
+                            node = re.sub(r"https:.*", "", node, flags=re.MULTILINE)#https削除
+                            node = re.sub(r"<.*>", "", node, flags=re.MULTILINE)
+                            node = re.sub(r"[.*]", "", node, flags=re.MULTILINE)
+                            node = re.sub(r":.*:", "", node, flags=re.MULTILINE)#カスタム絵文字削除<
+                            node = re.sub(r"@.* ", "", node, flags=re.MULTILINE)#メンション削除
+                            node = re.sub(r"#.* ", "", node, flags=re.MULTILINE)#ハッシュタグ削除
+                            node = re.sub(r"#", "", node, flags=re.MULTILINE)#ハッシュタグ取り切れないもの削除
+                            node = re.sub(r'^.{1,10}$', '', node, flags=re.MULTILINE)#短文削除
+                            node = re.sub(r"　", "", node, flags=re.MULTILINE)#空白削除
+                            node = re.sub(r'^\s*\n', '', node, flags=re.MULTILINE)#空白行削除
+                            node = emoji.replace_emoji(node, replace="")#絵文字削除
+                            node = node.replace('にゃ', 'な')
+                            buf_gr_1 += node
+                            buf_gr += node
+                            #print(node)
+                            if ():
+                                pass
+                            elif ():
+                                pass
+                            else :
+                                g_n = g_n + 1     
+                                if g_n > 60:
+                                    #print('over10')    
+                                    #print('######################処理前######################')
+                                    #print(buf_gr_1)
+                                    #print('######################処理後######################')
+                                    #print(buf_gr)    
+                                    logger.debug('get_global_60note')
+                                    return buf_gr 
+                                    break
+                        
+                except Exception:
+
+                    logger.debug(traceback.format_exc())
+                    logger.error('Connection_closed_global')
+                    #os.execv(sys.executable, ['python'] + sys.argv)
+        
+        except Exception:
+
+            logger.debug(traceback.format_exc())
+            logger.error('Connection_closed_global')
+
+            #print('error')
+            #os.execv(sys.executable, ['python'] + sys.argv)         #
+
+async def note_captcha():# ノート取得
+    try:
+        #print('test1')
+        #グローバル記録ブロック
+        task = asyncio.create_task(global_runner())
+        
+        g_note = await task
+        node = g_note
+    
+        #print(node) 
+        with open(settings.cashtxt, 'a', encoding='utf-8') as f:
+            f.writelines(node)
+            logger.debug('write_cashtxt')
+    except Exception:
+        pass                                
+
+async def post_tl():# テキスト処理→テキスト生成→投稿
+    try:
+        #task = asyncio.create_task(note_captcha())
+        await note_captcha()
+    
+        #print('back captcha')
+        with open(settings.cashtxt, "r", encoding = 'utf-8') as f1:
+            text1 = f1.read()
+            #print(text1)
+        with open(settings.home_cashtxt, "r", encoding = 'utf-8') as f2:
+            text2 = f2.read()
+            #print(text2)
+        with open(settings.cash2txt, "w", encoding = 'utf-8') as f3:
+            text3 = text1 + text2
+            f3.write(text3)
+
+        mecab = MeCab.Tagger('-Owakati')
+        text_1 = ''
+        # ファイルを開く
+        with open(settings.cash2txt, "r", encoding = 'utf-8') as f:
+            for line in f:# テキストファイルの品質確保
+                node = re.sub(r'\b\w{1,10}\n', '', line)
+                text_1 += node
+            text_s = text_1.split('\n')
+            text_1 = ''
+            for text_f in text_s :# 分かち書き
+                node = mecab.parse(text_f)
+                #print(node)
+                text_1 += node
+        text_model = markovify.NewlineText(text_1, state_size=2, well_formed=False)#モデル生成
+        dbreader = DBReader(settings.dbname, "rssqa_1")
+        column_a = 0
+        column_data_a = dbreader.get_column(column_a)
+        n_a = 0
+        while True:
+            markov_text = (text_model.make_short_sentence(120)) 
+            markov_text = markov_text.replace(' ', '').replace('@astrolabe　', '')
+            #print(markov_text)
+            '''
+            judge = (any(x in markov_text for x in column_data_a))
+            if n_a <= 10:
+                if judge:
+                    n_a = n_a + 1
+                    continue'''
+            if ():
+                pass    
+            else :
+                mk.notes_create(text=markov_text)
+                logger.debug('markov_post')
+                #字数制御ブロック（グローバル）
+                with open(settings.cashtxt, "r", encoding = 'utf-8') as f:
+                    text = f.read()
+
+                if len(text) > 2000:
+
+                    line_count = len(text) // 2
+                    new_text = text[line_count:]
+                    # テキストファイルを書き換える
+                    with open(settings.cashtxt, "w", encoding = 'utf-8') as f:
+                        f.write(new_text)
+                        logger.debug('cashtxt_rewrite')
+                elif len(text) > 10000:
+                    new_text = ''
+                    with open(settings.cashtxt, "w", encoding = 'utf-8') as f:
+                        f.write(new_text)
+                        logger.debug('cashtxt_over10000_clear')
+                
+
+                #字数制御ブロック（ホーム）     
+                with open(settings.home_cashtxt, "r", encoding = 'utf-8') as f:
+                    text = f.read()
+                
+                if len(text) > 2000:
+                    # テキストファイルの行数を取得する
+                    line_count = len(text) // 2
+                
+                    # テキストファイルの先頭 half_line_count 行を削除する
+                    new_text = text[line_count:]
+
+                    # テキストファイルを書き換える
+                    with open(settings.home_cashtxt, "w", encoding = 'utf-8') as f:
+                        f.write(new_text)
+                        logger.debug('home_cashtxt_rewrite')
+                elif len(text) > 10000:
+                    new_text = ''
+                    with open(settings.home_cashtxt, "w", encoding = 'utf-8') as f:
+                        f.write(new_text)
+                        logger.debug('home_cashtxt_over10000_clear')
+                #結合用の一時ファイル消去
+                with open(settings.cash2txt, "w", encoding = 'utf-8') as f:
+                    f.write("")
+                    logger.debug('cash2txt_clear')
+                break
+            
+        '''  
+
+        for i in range(1): #文字列生成
+            markov_text = (text_model.make_short_sentence(120)) 
+            markov_text = markov_text.replace(' ', '').replace('@astrolabe　', '')
+            '''
+    except Exception:
+        logger.debug(traceback.format_exc())
+        logger.debug('occurrence_exception')
+
+###########schedule_exe#########
 
 async def ohayou():
     	
@@ -171,7 +375,6 @@ async def oyasumi():
     import nitizi
     logger.info("def_oyasumi_nitizi clear")  
     return 'test'
-
 
 async def rss_a():
     dbreader = DBReader(settings.dbname, "rssqa_1")
@@ -405,7 +608,7 @@ async def anime():
     #投稿関数
     mk.notes_create(text=test_a)
     
-async def menu():
+async def menu_a():
     try:
         # DBReaderクラスのインスタンスを作成する
         dbreader = DBReader(settings.dbname, "menu")
@@ -424,6 +627,8 @@ async def menu():
             test_a = '献立って決めるの大変ですよね。そんな時はご飯ガチャを使います！\nということで出てきたのは「' + test + '」！\n出したからには頑張って作ります！'
         elif random_a == 4:
             test_a = 'ば、晩ご飯の時間ですけど、おやつ食べ過ぎちゃって食欲が、、うぅ、、ごめんなさい'
+            mk.notes_create(text=test_a)
+            return test_a
             #投稿関数
         logger.debug('post_menu_dennar')  
         mk.notes_create(text=test_a)
@@ -439,17 +644,15 @@ async def menu():
         logger.debug(traceback.format_exc())
         logger.error('menu_error')
        
-
-
-
 async def asy_test():
     await asyncio.sleep(5)
     print('async test')
-
    
 MY_ID = mk.i()['id']
 WS_URL_a = 'wss://' + settings.ADRESS + '?i='
 WS_URL = WS_URL_a + settings.TOKEN
+
+###########schedule_ctrl##############
 
 async def schedule_coroutine():
 
@@ -466,6 +669,8 @@ async def schedule_coroutine():
            anime_r = str(random.randint(0, 59))
            anime_r = str(random.randint(0, 59))
            menu_r = str(random.randint(0, 59))
+           markov_r = str(random.randint(0, 59))
+           
            ohayou_t = str('06') + ':' + (ohayou_r.zfill(2))
            oyasumi_t = str('23') + ':' + (oyasumi_r.zfill(2))
            sys_check_a_t = '04:00'
@@ -474,14 +679,24 @@ async def schedule_coroutine():
            nowplay = str(random.randint(10, 20)) + ':' + (nowplay_r.zfill(2))
            anime = str(random.randint(18, 21)) + ':' + (anime_r.zfill(2))
            menu = str(random.randint(19, 21)) + ':' + (menu_r.zfill(2))
-
+           
+           markov_t_1 = '10' + ':' + (markov_r.zfill(2))
+           markov_t_2 = '13' + ':' + (markov_r.zfill(2))
+           markov_t_3 = '16' + ':' + (markov_r.zfill(2))
+           markov_t_4 = '19' + ':' + (markov_r.zfill(2))
+           markov_t_5 = '21' + ':' + (markov_r.zfill(2))
+           
            logger.debug(ohayou_t)
            logger.debug(oyasumi_t)
            logger.debug(rss_a_t)
            logger.debug(rss_b_t)
            logger.debug(nowplay)
            logger.debug(anime)
-           logger.debug(menu)
+           logger.debug(markov_t_1)
+           logger.debug(markov_t_2)
+           logger.debug(markov_t_3)
+           logger.debug(markov_t_4)
+           logger.debug(markov_t_5)
            #動作制御
            n_a = 0#おはよう
            n_b = 0#おやすみ
@@ -491,6 +706,7 @@ async def schedule_coroutine():
            n_e = 0#nowplay
            n_f = 0#anime
            n_g = 0#menu
+           n_h = 0#markov
            n_test = 1#async def test直結
            n_date = 1#リセット用(1で正常。23:59に起こす)
            while True:
@@ -520,22 +736,29 @@ async def schedule_coroutine():
                elif dt_a ==  nowplay and n_e == 0:
                    n_e = n_e + 1
                    logger.debug('wakeup_nowplay_waight')
-                   now_r = random.choices([0, 1], weights=[1, 3])
-                   if now_r == 0:
+                   now_r = random.choices([0, 1], weights=[1, 2])
+                   logger.debug(now_r)
+                   if now_r == [0]:
                        logger.debug('wakeup_nowplay')
                        task = asyncio.create_task(now_play())
                elif dt_a == anime and n_f == 0:
                    pass
                    n_f = n_f + 1
                    logger.debug('wakeup_anime_waight')
-                   now_r = random.choices([0, 1], weights=[1, 4])
-                   if now_r == 0:
+                   now_r = random.choices([0, 1], weights=[1, 2])
+                   logger.debug(now_r)
+                   
+                   if now_r == [0]:
                        logger.debug('wakeup_anime')
                        task = asyncio.create_task(anime())
                elif dt_a == anime and n_g == 0:
                    n_g = n_g + 1
                    logger.debug('wakeup_menu')
-                   task = asyncio.create_task(menu())
+                   task = asyncio.create_task(menu_a())
+               elif (dt_a == markov_t_1 or dt_a == markov_t_2 or dt_a == markov_t_3 or dt_a == markov_t_4 or dt_a == markov_t_5) and n_h == 0:
+                   n_h = n_h + 1
+                   logger.debug('wakeup_markov')
+                   task = asyncio.create_task(post_tl())
                elif dt_a == 'test' and n_test == 0:
                   print(type(n_test))
                   n_test = n_test + 1
@@ -556,19 +779,21 @@ async def schedule_coroutine():
        except Exception:
             logger.debug(traceback.format_exc())
             logger.info('schedule_coroutine_exception')
-            
+
+###########home_get##############
+
 async def runner():
  #task1 = asyncio.create_task(schedule_a())
  #await task1
  async with websockets.connect(WS_URL) as ws:
   try:
       await ws.send(json.dumps({
-       "type": "connect",
-       "body": {
-         "channel": "homeTimeline",
-         "id": "test"
-       }
-      }))
+          "type": "connect",
+          "body": {
+                   "channel": "homeTimeline",
+                   "id": "test"
+                   }
+          }))
       data = json.loads(await ws.recv())
       logger.debug(data)    
       while True:
@@ -577,40 +802,45 @@ async def runner():
                data = json.loads(await ws.recv())
                logger.debug(data)    
                if data['type'] == 'channel':
-                if data['body']['type'] == 'note':
-     
-                 note = data['body']['body']
-                 user = data['body']['body']['user']
-                 
-                 task = asyncio.create_task(on_note(note, user))
+                   if data['body']['type'] == 'note': 
+                       note = data['body']['body']
+                       user = data['body']['body']['user']
+                       task = asyncio.create_task(on_note(note, user))
+                   elif data['body']['type'] == 'followed':
+                       user = data['body']['body']
+                       task = asyncio.create_task(on_follow(user))
           except Exception:
-              logger.debug(traceback.format_exc())
-              logger.error('Connection_closed')
-              os.execv(sys.executable, ['python'] + sys.argv)
+               logger.debug(traceback.format_exc())
+               logger.error('Connection_closed')
+               os.execv(sys.executable, ['python'] + sys.argv)
         
   except Exception:
       logger.debug(traceback.format_exc())
       logger.error('ws_error')
       os.execv(sys.executable, ['python'] + sys.argv)
+
+###########home_folloing#########
       
-      
-      
+async def on_follow(user):
+    try:
+        mk.following_create(user['id'])
+        logger.info('refollow_clear')
+    except:
+        logger.error('refollow_error') 
+
+###########home_exe(mention,reaction,call)##############
 
 async def on_note(note,user):
- logger.debug('async_def_onnote')
-
- if note.get('mentions'):
-  logger.debug('scan_mention')  
-  if MY_ID in note['mentions']:
-   logger.debug('scan_mention_myid')  
-   USER_NAME = 'test_name'
-   e.reply = note['text'].replace('@astrolabe ', '').replace('@astrolabe　', '')
-   logger.debug(e.reply) 
-   #mk.notes_create(text='解答を生成しているので少し待っていて下さい！＾＾', reply_id=note['id'])############
-   #翻訳
-   if e.reply.startswith(('help', 'info', '機能')):
-    #time.sleep(4)
-    info_text = ('''まず自由にリプライを下されば内容に応じた返信を致します。\n
+    logger.debug('async_def_onnote')
+    if note.get('mentions'):
+        logger.debug('scan_mention')  
+        if MY_ID in note['mentions']:
+            logger.debug('scan_mention_myid')  
+            USER_NAME = 'test_name'
+            e.reply = note['text'].replace('@astrolabe ', '').replace('@astrolabe　', '')
+            logger.debug(e.reply) 
+            if e.reply.startswith(('help', 'info', '機能')):
+                info_text = ('''まず自由にリプライを下されば内容に応じた返信を致します。\n
  次に冒頭のコマンドに応じた機能があります。
 ・「help」「info」「機能」でこの内容を返信します
 ・「remind」「リマインダー」でリマインダーを設定します（未実装）
@@ -618,140 +848,168 @@ async def on_note(note,user):
 ・「wether」「天気」で指示頂いた場所の天気をお教えします（未実装）
 ・「meal」「ごはんガチャ」でご飯ガチャを実施致します（未実装）
 and more......
-          
-        ''')
-    mk.notes_create(text=info_text, cw='わたくしアストロラーベの機能をご紹介します！', visibility=note['visibility'] , reply_id=note['id'])
-    logger.debug('help_post')  
-   elif e.reply.startswith(('Version', 'バージョン', '世代', '死活')):
-       dt1 = datetime.datetime.now()
-       dt1 =(str(dt1.strftime('%Y年%m月%d日%H時%M分%S秒')))
-       opinion_text = ('アストロラーベは稼働中です\n' + dt1 + '\n' +  Ver)
-       logger.debug('version_post')  
-       mk.notes_create(text=opinion_text, visibility=note['visibility'] , reply_id=note['id'])
-   elif e.reply.startswith(('meal', 'ご飯ガチャ', 'ごはん', 'ご飯', '献立')):
-       dbreader = DBReader(settings.dbname, "menu")
-       column_a = 0
-       column_data_a = dbreader.get_column(column_a) 
-       test = str(random.choices(column_data_a)).replace("['", "").replace("']", "")
-       test = '厳正なるご飯ガチャの結果は\n「' + test + '」でした！\nまたのご依頼、お待ちしています。\n（私は現在517の献立をご紹介できます！）'
-       mk.notes_create(text=test, visibility=note['visibility'] , reply_id=note['id'])
-
-   elif user['id'] == settings.Master_ID:#管理者用リプライ制御機能
-       logger.debug('scan_masterID') 
-       if e.reply.startswith(('停止', 'stop', '終了')):
-           mk.notes_create(text='システムを終了します', visibility=note['visibility'] , reply_id=note['id'])
-           sys.exit()
-       elif e.reply.startswith(('再起動', 'restart', 'アプデ')):
-           mk.notes_create(text='システムを再起動します', visibility=note['visibility'] , reply_id=note['id'])
-           os.execv(sys.executable, ['python'] + sys.argv)
-       elif e.reply.startswith(('テスト', 'test', '試験')):
-           mk.notes_create(text='コードに設定されている関数を実行します', visibility=note['visibility'] , reply_id=note['id'])
-           task = asyncio.create_task(menu())
-       else:
-          logger.debug('lmm_start')  
-          #print('test04') 
-          e.n = 0
-          #e.input_text = 'アメリカで一番大きい都市はどこですか？'
-          import llm_process
-          importlib.reload(llm_process)
+                             ''')
+                mk.notes_create(text=info_text, cw='わたくしアストロラーベの機能をご紹介します！', visibility=note['visibility'] , reply_id=note['id'])
+                logger.debug('help_post')  
+            elif e.reply.startswith(('Version', 'バージョン', '世代', '死活')):
+                dt1 = datetime.datetime.now()
+                dt1 =(str(dt1.strftime('%Y年%m月%d日%H時%M分%S秒')))
+                opinion_text = ('アストロラーベは稼働中です\n' + dt1 + '\n' +  Ver)
+                logger.debug('version_post')  
+                mk.notes_create(text=opinion_text, visibility=note['visibility'] , reply_id=note['id'])
+            elif e.reply.startswith(('meal', 'ご飯ガチャ', 'ごはん', 'ご飯', '献立')):
+                dbreader = DBReader(settings.dbname, "menu")
+                column_a = 0
+                column_data_a = dbreader.get_column(column_a) 
+                test = str(random.choices(column_data_a)).replace("['", "").replace("']", "")
+                test = '厳正なるご飯ガチャの結果は\n「' + test + '」でした！\nまたのご依頼、お待ちしています。\n（私は現在517の献立をご紹介できます！）'
+                mk.notes_create(text=test, visibility=note['visibility'] , reply_id=note['id'])
+    
+            elif user['id'] == settings.Master_ID:#管理者用リプライ制御機能
+                logger.debug('scan_masterID') 
+                if e.reply.startswith(('停止', 'stop', '終了')):
+                    mk.notes_create(text='システムを終了します', visibility=note['visibility'] , reply_id=note['id'])
+                    sys.exit()
+                elif e.reply.startswith(('再起動', 'restart', 'アプデ')):
+                    mk.notes_create(text='システムを再起動します', visibility=note['visibility'] , reply_id=note['id'])
+                    os.execv(sys.executable, ['python'] + sys.argv)
+                elif e.reply.startswith(('テスト', 'test', '試験')):
+                    mk.notes_create(text='コードに設定されている関数を実行します', visibility=note['visibility'] , reply_id=note['id'])
+                    task = asyncio.create_task(post_tl())
+                else:
+                    logger.debug('lmm_start')  
+                    #print('test04') 
+                    e.n = 0
+                    #e.input_text = 'アメリカで一番大きい都市はどこですか？'
+                    import llm_process
+                    importlib.reload(llm_process)
    
-          logger.debug('receive_control')
-          from llm_process import output_h
+                    logger.debug('receive_control')
+                    from llm_process import output_h
       
-          logger.debug(output_h)
-	       #LLMpy = LLM()
-	       #output_h = LLMpy.llm(input)
-	       #print(output_h)
-          mk.notes_create(text=output_h, cw='お待たせしました！丹精込めて答えましたよ～！', visibility=note['visibility'] , reply_id=note['id'])
-          logger.info('lmm_post')
-   else:
-      logger.debug('lmm_start')  
-      #print('test04') 
-      e.n = 0
-      #e.input_text = 'アメリカで一番大きい都市はどこですか？'
-      import llm_process
-      importlib.reload(llm_process)
-   
-      logger.debug('receive_control')
-      from llm_process import output_h
-      
-      logger.debug(output_h)
-	   #LLMpy = LLM()
-	   #output_h = LLMpy.llm(input)
-	   #print(output_h)
-      mk.notes_create(text=output_h, cw='お待たせしました！丹精込めて答えましたよ～！', visibility=note['visibility'] , reply_id=note['id'])
-      logger.info('lmm_post')
- else :
-     logger.debug('not_scan_mention')  
-     try:
-        if 'アストロラーベちゃん' in note['text']:
-            test = random.choices([1, 2], weights=[1, 4])
-            #test = 1
-            #print('test')
-            logger.debug('detection_astrolabe')
-            if test == 1:
-                await asyncio.sleep(10)    
-                logger.debug('reply_yobidashi')
-                mk.notes_create(text='呼びましたか？？', reply_id=note['id'])
-                pass
-        else:
-            logger.debug('not_detection_astrolabe')
-            scan_list_ohayou = r'ohayou|おはよう|おきた|起床'
-            scan_list_oyasumi = r'ohayou|おはよう|おきた|起床'
-            scan_list_kawaii = r'カワイイ|可愛い|かわいい'
-            scan_list_oishii = r'美味しい|おいしい|おいしみ'
-            scan_list_tiken = r'知見があっぷ|知見がアップ|rs_tiken_up|ちけんがあっぷ|なんだ|らしい|にゃんだ'
-            scan_list_gohan = r'ごはん|おひる|よるごはん|あさごはん|朝ご飯|お昼|夜ご飯'
-            if (re.compile(scan_list_ohayou)).search(note['text']):
-                #print('test')
-                timer = (random.randint(4, 360))
-                timer = float(timer)
-                await asyncio.sleep(timer) 
-                test = str(random.choices(settings.note_list_ohayou)).replace("['", "").replace("']", "") 
-                mk.notes_reactions_create(note_id=note['id'], reaction=test)
-                logger.debug('reaction_ohayou')
-            elif (re.compile(scan_list_oyasumi)).search(note['text']):
-                timer = (random.randint(4, 360))
-                timer = float(timer)
-                await asyncio.sleep(timer) 
-                test = str(random.choices(settings.note_list_oyasumi)).replace("['", "").replace("']", "") 
-                mk.notes_reactions_create(note_id=note['id'], reaction=test)
-                logger.debug('reaction_oyasumi')
-            elif (re.compile(scan_list_kawaii)).search(note['text']):
-                timer = (random.randint(4, 360))
-                timer = float(timer)
-                await asyncio.sleep(timer) 
-                test = str(random.choices(settings.note_list_kawaii)).replace("['", "").replace("']", "") 
-                mk.notes_reactions_create(note_id=note['id'], reaction=test)
-                logger.debug('reaction_kawaii')
-            elif (re.compile(scan_list_oishii)).search(note['text']):
-                timer = (random.randint(4, 360))
-                timer = float(timer)
-                await asyncio.sleep(timer) 
-                test = str(random.choices(settings.note_list_oishii)).replace("['", "").replace("']", "") 
-                mk.notes_reactions_create(note_id=note['id'], reaction=test)
-                logger.debug('reaction_oishii')
-            elif (re.compile(scan_list_tiken)).search(note['text']):
-                timer = (random.randint(4, 360))
-                timer = float(timer)
-                await asyncio.sleep(timer) 
-                test = str(random.choices(settings.note_list_tiken)).replace("['", "").replace("']", "") 
-                mk.notes_reactions_create(note_id=note['id'], reaction=test)
-                logger.debug('reaction_tiken')
-            elif (re.compile(scan_list_gohan)).search(note['text']):
-                timer = (random.randint(4, 360))
-                timer = float(timer)
-                await asyncio.sleep(timer) 
-                test = str(random.choices(settings.note_list_gohan)).replace("['", "").replace("']", "") 
-                mk.notes_reactions_create(note_id=note['id'], reaction=test)
-                logger.debug('reaction_gohan')
-                #mk.notes_reactions_create(note_id=note['id'], reaction=':kawaii_comment:')
+                    logger.debug(output_h)
+	                #LLMpy = LLM()
+	                #output_h = LLMpy.llm(input)
+	                #print(output_h)
+                    mk.notes_create(text=output_h, cw='お待たせしました！丹精込めて答えましたよ～！', visibility=note['visibility'] , reply_id=note['id'])
+                    logger.info('lmm_post')
             else:
-                logger.debug('not_conditions_reaction')
-     except Exception:
+                logger.debug('lmm_start')  
+                #print('test04') 
+                e.n = 0
+                #e.input_text = 'アメリカで一番大きい都市はどこですか？'
+                import llm_process
+                importlib.reload(llm_process) 
+                logger.debug('receive_control')
+                from llm_process import output_h
+                logger.debug(output_h)
+                #LLMpy = LLM()
+                #output_h = LLMpy.llm(input)
+                #print(output_h)
+                mk.notes_create(text=output_h, cw='お待たせしました！丹精込めて答えましたよ～！', visibility=note['visibility'] , reply_id=note['id'])
+                logger.info('lmm_post')
+    else :
+        try:
+
+            if (user['id'] == settings.AI_ID):
+                logger.debug('into_home_else_astrolabe_note')
+
+            else:
+                logger.debug('into_home_else_nomal_note')
+                node = note['text']
+                node = node + '。\n'
+                node = node.replace('。。', '。')
+                node = re.sub(r'。', '。\n', node, flags=re.MULTILINE)#文中読点の改行
+                node = re.sub(r"https:.*", "", node, flags=re.MULTILINE)#https削除
+                node = re.sub(r":.*:", "", node, flags=re.MULTILINE)#カスタム絵文字削除
+                node = re.sub(r"<.*>", "", node, flags=re.MULTILINE)
+                node = re.sub(r"[.*]", "", node, flags=re.MULTILINE)
+                node = re.sub(r"@.* ", "", node, flags=re.MULTILINE)#メンション削除
+                node = re.sub(r"#.* ", "", node, flags=re.MULTILINE)#ハッシュタグ削除
+                node = re.sub(r"#", "", node, flags=re.MULTILINE)#ハッシュタグ取り切れないもの削除
+                node = re.sub(r'^.{1,10}$', '', node, flags=re.MULTILINE)#短文削除
+                node = re.sub(r"　", "", node, flags=re.MULTILINE)#空白削除
+                node = re.sub(r'^\s*\n', '', node, flags=re.MULTILINE)#空白行削除
+                node = emoji.replace_emoji(node, replace="")#絵文字削除
+                node = node.replace('にゃ', 'な')
+                with open(settings.home_cashtxt, 'a', encoding='utf-8') as f:
+                    f.writelines(node)
+                    logger.debug('record_home_note')
+                
+                logger.debug('not_scan_mention')
+            
+                if 'アストロラーベちゃん' in note['text']:
+                    logger.debug('call_astrolabe')
+                    test_call = random.choices([1, 2], weights=[1, 2])
+                    logger.debug(test_call)
+                    logger.debug('detection_astrolabe')
+                    if test_call == [1]:
+                        await asyncio.sleep(10)    
+                        logger.debug('reply_yobidashi')
+                        mk.notes_create(text='呼びましたか？？', reply_id=note['id'])
+                    else :
+                    
+                        pass
+                else:
+                    logger.debug('not_detection_astrolabe')
+                    scan_list_ohayou = r'ohayou|おはよう|おきた|起床'
+                    scan_list_oyasumi = r'ohayou|おはよう|おきた|起床'
+                    scan_list_kawaii = r'カワイイ|可愛い|かわいい'
+                    scan_list_oishii = r'美味しい|おいしい|おいしみ'
+                    scan_list_tiken = r'知見があっぷ|知見がアップ|rs_tiken_up|ちけんがあっぷ|なんだ|らしい|にゃんだ'
+                    scan_list_gohan = r'ごはん|おひる|よるごはん|あさごはん|朝ご飯|お昼|夜ご飯'
+                    if (re.compile(scan_list_ohayou)).search(note['text']):
+                        timer = (random.randint(4, 360))
+                        timer = float(timer)
+                        await asyncio.sleep(timer) 
+                        test = str(random.choices(settings.note_list_ohayou)).replace("['", "").replace("']", "") 
+                        mk.notes_reactions_create(note_id=note['id'], reaction=test)
+                        logger.debug('reaction_ohayou')
+                    elif (re.compile(scan_list_oyasumi)).search(note['text']):
+                        timer = (random.randint(4, 360))
+                        timer = float(timer)
+                        await asyncio.sleep(timer) 
+                        test = str(random.choices(settings.note_list_oyasumi)).replace("['", "").replace("']", "") 
+                        mk.notes_reactions_create(note_id=note['id'], reaction=test)
+                        logger.debug('reaction_oyasumi')
+                    elif (re.compile(scan_list_kawaii)).search(note['text']):
+                        timer = (random.randint(4, 360))
+                        timer = float(timer)
+                        await asyncio.sleep(timer) 
+                        test = str(random.choices(settings.note_list_kawaii)).replace("['", "").replace("']", "") 
+                        mk.notes_reactions_create(note_id=note['id'], reaction=test)
+                        logger.debug('reaction_kawaii')
+                    elif (re.compile(scan_list_oishii)).search(note['text']):
+                        timer = (random.randint(4, 360))
+                        timer = float(timer)
+                        await asyncio.sleep(timer) 
+                        test = str(random.choices(settings.note_list_oishii)).replace("['", "").replace("']", "") 
+                        mk.notes_reactions_create(note_id=note['id'], reaction=test)
+                        logger.debug('reaction_oishii')
+                    elif (re.compile(scan_list_tiken)).search(note['text']):
+                        timer = (random.randint(4, 360))
+                        timer = float(timer)
+                        await asyncio.sleep(timer) 
+                        test = str(random.choices(settings.note_list_tiken)).replace("['", "").replace("']", "") 
+                        mk.notes_reactions_create(note_id=note['id'], reaction=test)
+                        logger.debug('reaction_tiken')
+                    elif (re.compile(scan_list_gohan)).search(note['text']):
+                        timer = (random.randint(4, 360))
+                        timer = float(timer)
+                        await asyncio.sleep(timer) 
+                        test = str(random.choices(settings.note_list_gohan)).replace("['", "").replace("']", "") 
+                        mk.notes_reactions_create(note_id=note['id'], reaction=test)
+                        logger.debug('reaction_gohan')
+                        #mk.notes_reactions_create(note_id=note['id'], reaction=':kawaii_comment:')
+                    else:
+                        logger.debug('not_conditions_reaction')
+        except Exception:
          
-         logger.debug(traceback.format_exc())
-         logger.debug('occurrence_exception')
+            logger.debug(traceback.format_exc())
+            logger.debug('occurrence_exception')
+
+###########manage##############
+
 
 async def main():
     await asyncio.gather(runner(), schedule_coroutine())

@@ -13,12 +13,16 @@ alosname = PATH +'/misskey_bot_astrolabe.py'
 AI_NAME = 'Astrolabe'
 AI_ID = '9ib6lbdave'
 Master_ID = '9gw9h2omwq'
-TOKEN = 
+TOKEN = 'UeZEaJ09jR9FKI7NHh5vtMaNYKfBxR0a'
 ADRESS = 'misskey.seitendan.com'
 USER_NAME = 'test_name'
 LLMPATH = PATH + "/model/chronos-13b.ggmlv3.q4_K_M.bin"
 
 FORMAT = "%(levelname)-9s  %(asctime)s [%(filename)s:%(lineno)d] %(message)s"
+
+cashtxt = '/cash/casj1.txt'
+home_cashtxt = '/cash/cash2.txt'
+cash2txt = '/cash/cash3.txt'
 
 
 RSS_URL_a = 'https://rss.itmedia.co.jp/rss/2.0/itmedia_all.xml'

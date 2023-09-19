@@ -24,6 +24,7 @@ def dt1():
     #フォルダ生成系
     log_path = settings.PATH + '/log'
     model_path = settings.PATH + '/model'
+    model_path = settings.PATH + '/cash'
     new_dir_path_recursive = log_path
     new_dir_path_recursive_a = model_path
     os.makedirs(new_dir_path_recursive, exist_ok=True)

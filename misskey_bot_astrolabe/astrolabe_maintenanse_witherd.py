@@ -320,7 +320,7 @@ while True:
                 driver.quit() # ドライバーを終了します
                 df.to_csv(settings.csvname, encoding='utf-8', index=False) # data frameをCSVファイルに書き込みます
         elif witherd == 7:
-            phase = int(input('列名を入力して下さい：'))
+            phase = (input('列名を入力して下さい：'))
 
             df = pd.read_csv(settings.csvname)
 
