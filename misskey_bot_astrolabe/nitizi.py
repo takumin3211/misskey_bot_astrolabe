@@ -74,7 +74,8 @@ def nitizi():
         days = dt3.days
         hours, remainder = divmod(dt3.total_seconds(), 3600)
         minutes, seconds = divmod(remainder, 60)
-        progre_time2 = f"{days}日と{int(hours)}時間{int(minutes)}分{int(seconds)}秒"
+        hours_cale = int(hours) - days*24
+        progre_time2 = f"{days}日と{hours_cale}時間{int(minutes)}分{int(seconds)}秒"
         return  progre_time2
     progre_time2 = progre_time()
     #投稿文作成

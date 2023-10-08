@@ -13,26 +13,27 @@ alosname = PATH +'/misskey_bot_astrolabe.py'
 AI_NAME = 'Astrolabe'
 AI_ID = '9ib6lbdave'
 Master_ID = '9gw9h2omwq'
-TOKEN = 
+Master_NAME = '@takumin3211@misskey.seitendan.com'
+TOKEN = 'UeZEaJ09jR9FKI7NHh5vtMaNYKfBxR0a'
 ADRESS = 'misskey.seitendan.com'
 USER_NAME = 'test_name'
 LLMPATH = PATH + "/model/chronos-13b.ggmlv3.q4_K_M.bin"
 
 FORMAT = "%(levelname)-9s  %(asctime)s [%(filename)s:%(lineno)d] %(message)s"
 
-cashtxt = '/cash/casj1.txt'
-home_cashtxt = '/cash/cash2.txt'
-cash2txt = '/cash/cash3.txt'
+cashtxt =  PATH + '/cash/cash1.txt'
+home_cashtxt =  PATH + '/cash/cash2.txt'
+cash2txt =  PATH + '/cash/cash3.txt'
 
 
 RSS_URL_a = 'https://rss.itmedia.co.jp/rss/2.0/itmedia_all.xml'
 RSS_URL_b = 'https://gigazine.net/news/rss_2.0/'
 
 
-note_list_ohayou = [':ohayoo:']
-note_list_oyasumi = [':oyasumi2:', ':neru_purikone_anime:']
+note_list_ohayou = [':ohayou_seitendan_greeting:']
+note_list_oyasumi = [':oyasumi_seitendan_greeting:', ':neru_purikone_anime:']
 note_list_kawaii = [':emoemo2_nizigasaki_anime:', ':kawaii_comment:', ':kawwa_comment:']
 note_list_oishii = [':oishimi_text:', ':unnmenya_wug_anime:']
-note_list_tiken = [':rs_tiken_up:']
+note_list_tiken = [':kasikosa_up:']
 note_list_gohan = [':taberux2_kouhuku_anime:', ':oishimi_text:', ':gokugoku_comment:', ':unnmenya_wug_anime:']
 

@@ -1,4 +1,4 @@
-#!//etc/astrolabe/venv/bin/python
+#!//home/share/venv/bin/python3.11
 from logging import getLogger, Formatter, StreamHandler, FileHandler, DEBUG, INFO, WARNING, ERROR
 from timeit import Timer
 from misskey import Misskey
@@ -25,58 +25,85 @@ import traceback
 import MeCab
 import markovify
 import emoji
+import cv2
+from platform import java_ver
+import urllib.parse
+from lxml import html,etree
+import requests
+from bs4 import BeautifulSoup
+import lxml.html
+import selenium
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 
-
-Ver = 'v.0.07.00'
-
+Ver = 'v.1.01.06'
 logger = getLogger('astrolabe_logs')
 
 mk = Misskey(settings.ADRESS, i=settings.TOKEN)
 
 def dt1():
-    #時間取得
-    dt1 = datetime.datetime.now()
-    '''
-    #フォルダ生成系
-    log_path = settings.PATH + '/log'
-    model_path = settings.PATH + '/model'
-    new_dir_path_recursive = log_path
-    new_dir_path_recursive_a = model_path
-    os.makedirs(new_dir_path_recursive, exist_ok=True)
-    os.makedirs(new_dir_path_recursive_a, exist_ok=True)
-    #ログ準備系
-'''
-    #dt2 = (str(dt1.strftime('%Y%m%d%H%M%S'))) + '.log'
-    dt2 = settings.PATH + '/log/' + (str(dt1.strftime('%Y%m%d%H%M%S'))) + '.log'
-    logger.setLevel(DEBUG)
-    fl_handler = FileHandler(filename= dt2 , encoding="utf-8")
-    fl_handler.setLevel(DEBUG)
-    fl_handler.setFormatter(Formatter(settings.FORMAT))
-    logger.addHandler(fl_handler)
-    logger.info("logging start")
+    try:
+        #時間取得
+        dt1 = datetime.datetime.now()
+        #フォルダ生成系
+        log_path = settings.PATH + '/log'
+        model_path = settings.PATH + '/model'
+        model_path = settings.PATH + '/cash'
+        new_dir_path_recursive = log_path
+        new_dir_path_recursive_a = model_path
+        os.makedirs(new_dir_path_recursive, exist_ok=True)
+        os.makedirs(new_dir_path_recursive_a, exist_ok=True)
+        #DB記録系
+        '''
+        conn = sqlite3.connect(settings.dbname)
+        cur = conn.cursor()
+        cur.execute("UPDATE time_db SET time = ? WHERE name = 'first_time'", (dt1,))
+        #print(dt1)
+        sql = "SELECT * FROM time_db"
+        df = pd.read_sql_query(sql, conn)
+        #print(df)
+        conn.commit()
+        cur.close()
+        conn.close()
+        '''
+        #dt2 = (str(dt1.strftime('%Y%m%d%H%M%S'))) + '.log'
+        dt2 = settings.PATH + '/log/' + (str(dt1.strftime('%Y%m%d%H%M%S'))) + '.log'
+        logger.setLevel(DEBUG)
+        fl_handler = FileHandler(filename= dt2 , encoding="utf-8")
+        fl_handler.setLevel(DEBUG)
+        fl_handler.setFormatter(Formatter(settings.FORMAT))
+        logger.addHandler(fl_handler)
+        logger.info("logging start")
     
-    opinion_text = ('アストロラーベのシステムが起動しました\n' + str(dt1) + '\n' +  Ver)
-    mk.notes_create(text=opinion_text, visibility='specified' , visible_user_ids=[settings.Master_ID])
 
-    '''
-    #DB記録系
-    conn = sqlite3.connect(settings.dbname)
-    cur = conn.cursor()
-    cur.execute("UPDATE time_db SET time = ? WHERE name = 'first_time'", (dt1,))
-    #print(dt1)
-    sql = "SELECT * FROM time_db"
-    df = pd.read_sql_query(sql, conn)
-    #print(df)
-    conn.commit()
-    cur.close()
-    conn.close()
-    #ログ系
-    logger.info("def_dt1 clear")
-    logger.info("ALos_sys_booting_now!")
-    logger.info(Ver)
-    print("ALos_sys_booting_now!")'''
+
+
+        #ログ系
+        #logger.info("def_dt1 clear")
+        #logger.info("ALos_sys_booting_now!")
+        #logger.info(Ver)
+        #print("ALos_sys_booting_now!")
+        #(sys.executable)
+        #print(settings.alosname)
+        #print(sys.argv)
+        #print('アストロラーベのプロセスが始動しました。')
+        #print(dt1)
+        time.sleep(5)
+
     
+        opinion_text = ('アストロラーベのシステムが起動しました\n' + str(dt1) + '\n' +  Ver)
+        mk.notes_create(text=opinion_text, visibility='specified' , visible_user_ids=[settings.Master_ID])
+    
+        #os.exit
+    except Exception:
+        logger.debug(traceback.format_exc())
+        logger.error('Connection_closed_global')
+        os.execv(sys.executable, ['python'] + sys.argv)
 dt1()#起動時のみの動作を内部に書く
 
 ###########class###############
@@ -107,6 +134,7 @@ class DBReader:
 ###########markov##############
 
 async def global_runner():#グローバル受信系
+
     #task1 = asyncio.create_task(schedule_a())
     #await task1
     async with websockets.connect(WS_URL) as ws:
@@ -133,40 +161,49 @@ async def global_runner():#グローバル受信系
                         if data['body']['type'] == 'note': 
                             note = data['body']['body']
                             buf_note =  note['text']
-                            buf_gr_1 += buf_note
-                            node = buf_note + '。\n'
-                            node = node.replace('。。', '。').replace('$', '')
-                            node = re.sub(r'。', '。\n', node, flags=re.MULTILINE)#文中読点の改行
-                            node = re.sub(r"https:.*", "", node, flags=re.MULTILINE)#https削除
-                            node = re.sub(r"<.*>", "", node, flags=re.MULTILINE)
-                            node = re.sub(r"[.*]", "", node, flags=re.MULTILINE)
-                            node = re.sub(r":.*:", "", node, flags=re.MULTILINE)#カスタム絵文字削除<
-                            node = re.sub(r"@.* ", "", node, flags=re.MULTILINE)#メンション削除
-                            node = re.sub(r"#.* ", "", node, flags=re.MULTILINE)#ハッシュタグ削除
-                            node = re.sub(r"#", "", node, flags=re.MULTILINE)#ハッシュタグ取り切れないもの削除
-                            node = re.sub(r'^.{1,10}$', '', node, flags=re.MULTILINE)#短文削除
-                            node = re.sub(r"　", "", node, flags=re.MULTILINE)#空白削除
-                            node = re.sub(r'^\s*\n', '', node, flags=re.MULTILINE)#空白行削除
-                            node = emoji.replace_emoji(node, replace="")#絵文字削除
-                            node = node.replace('にゃ', 'な')
-                            buf_gr_1 += node
-                            buf_gr += node
-                            #print(node)
-                            if ():
-                                pass
-                            elif ():
-                                pass
+                            if buf_note == None:
+                                logger.debug('get_global_note_none')
                             else :
-                                g_n = g_n + 1     
-                                if g_n > 60:
-                                    #print('over10')    
-                                    #print('######################処理前######################')
-                                    #print(buf_gr_1)
-                                    #print('######################処理後######################')
-                                    #print(buf_gr)    
-                                    logger.debug('get_global_60note')
-                                    return buf_gr 
-                                    break
+                                buf_note =  note['text']
+                            
+                                buf_gr_1 += buf_note
+                                node = buf_note + '。\n'
+                                node = node.replace('。。', '。').replace('$', '')
+                                node = re.sub(r'。', '。\n', node, flags=re.MULTILINE)#文中読点の改行
+                                node = re.sub(r"https:.*", "", node, flags=re.MULTILINE)#https削除
+                                node = re.sub(r"@.*", "", node, flags=re.MULTILINE)
+                                node = re.sub(r"<.*>", "", node, flags=re.MULTILINE)
+                                node = re.sub(r"[.*]", "", node, flags=re.MULTILINE)
+                                node = re.sub(r':', '', node, flags=re.MULTILINE)#短文削除
+                                node = re.sub(r'\.*', '', node, flags=re.MULTILINE)#短文削除
+                                node = re.sub(r":.*:", "", node, flags=re.MULTILINE)#カスタム絵文字削除<
+                                node = re.sub(r"@.* ", "", node, flags=re.MULTILINE)#メンション削除
+                                node = re.sub(r"#.* ", "", node, flags=re.MULTILINE)#ハッシュタグ削除
+                                node = re.sub(r"#.*", "", node, flags=re.MULTILINE)#ハッシュタグ削除
+                                #node = re.sub(r"#", "", node, flags=re.MULTILINE)#ハッシュタグ取り切れないもの削除
+                                node = re.sub(r'^.{1,10}$', '', node, flags=re.MULTILINE)#短文削除
+                                node = re.sub(r"　", "", node, flags=re.MULTILINE)#空白削除
+                                node = re.sub(r'^\s*\n', '', node, flags=re.MULTILINE)#空白行削除
+                                node = emoji.replace_emoji(node, replace="")#絵文字削除
+                                node = node.replace('にゃ', 'な')
+                                buf_gr_1 += node
+                                buf_gr += node
+                                #print(node)
+                                if ():
+                                    pass
+                                elif ():
+                                    pass
+                                else :
+                                    g_n = g_n + 1     
+                                    if g_n > 30:
+                                        #print('over10')    
+                                        #print('######################処理前######################')
+                                        #print(buf_gr_1)
+                                        #print('######################処理後######################')
+                                        #print(buf_gr)    
+                                        logger.debug('get_global_60note')
+                                        return buf_gr 
+                                        break
                         
                 except Exception:
 
@@ -227,13 +264,13 @@ async def post_tl():# テキスト処理→テキスト生成→投稿
                 node = mecab.parse(text_f)
                 #print(node)
                 text_1 += node
-        text_model = markovify.NewlineText(text_1, state_size=2, well_formed=False)#モデル生成
+        text_model = markovify.NewlineText(text_1, state_size=1, well_formed=False)#モデル生成
         dbreader = DBReader(settings.dbname, "rssqa_1")
         column_a = 0
         column_data_a = dbreader.get_column(column_a)
         n_a = 0
         while True:
-            markov_text = (text_model.make_short_sentence(120)) 
+            markov_text = (text_model.make_short_sentence(60)) 
             markov_text = markov_text.replace(' ', '').replace('@astrolabe　', '')
             #print(markov_text)
             '''
@@ -270,7 +307,7 @@ async def post_tl():# テキスト処理→テキスト生成→投稿
                 with open(settings.home_cashtxt, "r", encoding = 'utf-8') as f:
                     text = f.read()
                 
-                if len(text) > 2000:
+                if len(text) > 500:
                     # テキストファイルの行数を取得する
                     line_count = len(text) // 2
                 
@@ -482,22 +519,30 @@ async def sys_check_a():
     cpu_per__ = (psutil.cpu_percent(interval=1, percpu=True))
     cpu_per_a = max(cpu_per__)
     usage__ = (psutil.disk_usage(path='/').percent)
-    if usage__ >= 90.0:
+    if usage__ >= 90.0 and cpu_per_a >= 90.0:
+       usage__ = str(usage__)
+       cpu_per_a = str(cpu_per_a)
+       cpu_and_disk = 'CPU利用率及びディスク使用率が許容値を超過しました。ディスク使用率：' + usage__ + '％、CPU利用率：' + cpu_per_a + '％'
+       mk.notes_create(text=cpu_and_disk, visibility='specified' , visible_user_ids=[settings.Master_ID])
+       logger.warning("def_sys_check_diskuse(Over_90)_and_cpu_max_per(Over_90)")
+       return
+    elif usage__ >= 90.0:
        usage__ = str(usage__)
        usage_a = 'ディスク使用率が90％を超過したことを検知しました。\nシステムに影響を及ぼす可能性があります。\n' + '現在使用率:' + usage__ + '％'
-       mk.notes_create(text=usage_a, visibility='home')
-       logger.warning("def_sys_check diskuse(Over_90)")
-       pass
-    else:
-       pass
-    if cpu_per_a >= 90.0:
+       mk.notes_create(text=usage_a, visibility='specified' , visible_user_ids=[settings.Master_ID])
+       logger.warning("def_sys_check_diskuse(Over_90)")
+       return
+    elif cpu_per_a >= 90.0:
        cpu_per_a = str(cpu_per_a)
        cpu_per_a_a =  'CPU論理プロセッサの最大利用率が90％を超過したことを検知しました。\nシステムに影響を及ぼす可能性があります。\n' + '現在使用率:' +  cpu_per_a + '％'
-       mk.notes_create(text=cpu_per_a_a, visibility='home')
-       logger.warning("def_sys_check cpu_max_per(Over_90)")
+       mk.notes_create(text=cpu_per_a_a, visibility='specified' , visible_user_ids=[settings.Master_ID])
+       logger.warning("def_sys_check_cpu_max_per(Over_90)")
+       return
     else:
        logger.debug(cpu_per_a)  
        logger.debug(usage__)  
+       sys_check_pass = 'システムチェックの結果問題はありませんでした'
+       mk.notes_create(text=sys_check_pass, visibility='specified' , visible_user_ids=[settings.Master_ID])
        logger.debug('syscheck_pass')  
        #print(cpu_per_a)
        #print(usage__)
@@ -539,10 +584,10 @@ async def now_play():
     mk.notes_create(text=test_a)
     logger.info("def_now_play_clear")      
 
-async def anime():
+async def anime_def():
     	
     # DBReaderクラスのインスタンスを作成する
-    dbreader = DBReader(dbname, "anime")
+    dbreader = DBReader(settings.dbname, "anime")
     # 取得したい列番号を定義する
     column_a = 6 # title
     column_b = 8 # year
@@ -573,7 +618,7 @@ async def anime():
 でも、Dアニメストアに情報がないみたいなのでこれ以上ご紹介できません。。。
 お役に立てず、ごめんなさい！
     '''    
-        print(test)
+        #print(test)
     elif text_3 == 'Dアニメストアに情報がないか、取得に失敗しました':
         test = f'''
 むむ、、なんかアニメが見たくなってきました。例えば……
@@ -585,7 +630,7 @@ async def anime():
 誤っている場合があるので注意してください。
 作品のページです！：{text_5}
     '''        
-        print(test)    
+        #print(test)    
         
     else :
         test = f'''
@@ -597,7 +642,7 @@ async def anime():
 誤っている場合があるので注意してください。
 作品のページです！：{text_5}
     '''       
-        print(test)     
+        #print(test)     
     #test = str(random.choices(column_data_a)).replace("['", "").replace("']", "") 
 
     timer = random.randint(0, 50)
@@ -614,7 +659,7 @@ async def menu_a():
         dbreader = DBReader(settings.dbname, "menu")
         column_a = 0
         column_data_a = dbreader.get_column(column_a) 
-        test = str(random.choices(column_data_a)).replace("['", "").replace("']", "")
+        test = str(random.choices(column_data_a)).replace("['", "").replace("']", "").replace("\u3000", " ")
         timer = random.randint(0, 50)
         timer = float(timer)
         await asyncio.sleep(timer)
@@ -643,7 +688,82 @@ async def menu_a():
     except Exception:
         logger.debug(traceback.format_exc())
         logger.error('menu_error')
-       
+
+
+async def weather_get(url_get, id_get, pref_get):
+    logger.debug('weather_get_start')  
+    options = Options()
+    options.headless = True
+    driver = webdriver.Chrome(options=options)
+    #driver = webdriver.Chrome()
+    # set window size
+
+    driver.get(url_get) # URLにアクセスします
+
+    wait = WebDriverWait(driver, 10)#タイムアウト時間の設定
+    await asyncio.sleep(10.0)
+    driver.implicitly_wait(10) #タイムアウト時間の設定
+    element = driver.find_elements(By.XPATH, '//*[@id="bosaitop-bosai_forecast_table_div"]/div[1]/div/div/div[2]/table/tr[3]/td/div') # XPATHで要素を見つけます
+    elements_get = []
+    for element in element:
+        text = element.text
+        #print(text)
+        elements_get.append(text)
+        #print(elements_get)
+    # Close Web Browser
+    driver.quit()
+    dt1 = datetime.datetime.now()
+    name0 = (str(dt1.strftime('%Y年%m月%d日')))
+    name1 = str(elements_get[0])
+    name2 = str(elements_get[1])
+    name3 = str(elements_get[2])
+    conn = sqlite3.connect(settings.dbname)
+    cur = conn.cursor()
+    sql = "SELECT * FROM weather"
+    cur.execute(sql)
+    cur.execute("UPDATE weather SET W_1 = ? WHERE id = ?", (name1, id_get))
+    cur.execute("UPDATE weather SET W_2 = ? WHERE id = ?", (name2, id_get))
+    cur.execute("UPDATE weather SET W_3 = ? WHERE id = ?", (name3, id_get))
+    cur.execute("UPDATE weather SET W_8 = ? WHERE id = ?", (name0, id_get))
+    conn.commit()
+    conn.close()
+    if name1 == name2 and name1 == name3:#毎日同じ場合
+        weather_mk = 'ご利用ありがとうございます！\n' + pref_get + 'のお天気は、今日から明後日にかけて連日' + name1 + 'です。\nこれは気象庁から取得した、' + name0 + '時点の予報です。\nこの予報を生命及び財産の保護等に使わないで下さい。\n(正確かつ最新の予報は直接取得して下さい)'
+        return weather_mk
+    elif name1 == name2:#今日と明日が同じ場合
+        weather_mk = 'ご利用ありがとうございます！\n' + pref_get + 'のお天気は、今日は' + name1 + '\n明日も' + name2 + '\n明後日は' + name3 + 'です。これは気象庁から取得した、' + name0 + '時点の予報です。\nこの予報を生命及び財産の保護等に使わないで下さい。\n(正確かつ最新の予報は直接取得して下さい)'
+        return weather_mk  
+    elif name2 == name3:#明日と明後日同じ場合
+        weather_mk = 'ご利用ありがとうございます！\n' + pref_get + 'のお天気は、今日は' + name1 + '\n明日は' + name2 + '\n明後日も' + name3 + 'です。これは気象庁から取得した、' + name0 + '時点の予報です。\nこの予報を生命及び財産の保護等に使わないで下さい。\n(正確かつ最新の予報は直接取得して下さい)'
+        return weather_mk  
+
+    else :
+        weather_mk = 'ご利用ありがとうございます！\n' + pref_get + 'のお天気は、今日は' + name1 + '\n明日は' + name2 + '\n明後日は' + name3 + 'です。これは気象庁から取得した、' + name0 + '時点の予報です。\nこの予報を生命及び財産の保護等に使わないで下さい。\n(正確かつ最新の予報は直接取得して下さい)'
+        return weather_mk
+    #print(weather_mk)
+
+async def weather_get_sche():
+    dbreader = DBReader(settings.dbname, "weather")
+    column_a = 3
+    column_b = 6
+    column_c = 14
+    column_d = 2
+    column_data_a = dbreader.get_column(column_a)
+    random_pref = random.choices(column_data_a)[0]
+    index1 = column_data_a.index(random_pref)
+    column_data_b = dbreader.get_column(column_b)
+    column_data_c = dbreader.get_column(column_c)
+    column_data_d = dbreader.get_column(column_d)
+    pref_get =  column_data_a[index1]
+    url_get = column_data_b[index1]
+    time_get = column_data_c[index1]
+    id_get = column_data_d[index1]
+    task = asyncio.create_task(weather_get(url_get, id_get, pref_get))
+    g_note = await task
+    g_note = g_note.replace('ご利用ありがとうございます！\n', '')
+    g_note = '今日のランダム地点お天気です！\n\n' + g_note
+    mk.notes_create(text=g_note)
+
 async def asy_test():
     await asyncio.sleep(5)
     print('async test')
@@ -679,6 +799,7 @@ async def schedule_coroutine():
            nowplay = str(random.randint(10, 20)) + ':' + (nowplay_r.zfill(2))
            anime = str(random.randint(18, 21)) + ':' + (anime_r.zfill(2))
            menu = str(random.randint(19, 21)) + ':' + (menu_r.zfill(2))
+           weather_t = str('07') + ':' + (nowplay_r.zfill(2))
            
            markov_t_1 = '10' + ':' + (markov_r.zfill(2))
            markov_t_2 = '13' + ':' + (markov_r.zfill(2))
@@ -706,7 +827,13 @@ async def schedule_coroutine():
            n_e = 0#nowplay
            n_f = 0#anime
            n_g = 0#menu
-           n_h = 0#markov
+           n_h_1 = 0#markov
+           n_h_2 = 0#markov
+           n_h_3 = 0#markov
+           n_h_4 = 0#markov
+           n_h_5 = 0#markov
+           n_i = 0#weather
+
            n_test = 1#async def test直結
            n_date = 1#リセット用(1で正常。23:59に起こす)
            while True:
@@ -749,16 +876,36 @@ async def schedule_coroutine():
                    logger.debug(now_r)
                    
                    if now_r == [0]:
-                       logger.debug('wakeup_anime')
-                       task = asyncio.create_task(anime())
+                       logger.debug('wakeup_anime_def')
+                       task = asyncio.create_task(anime_def())
                elif dt_a == anime and n_g == 0:
                    n_g = n_g + 1
                    logger.debug('wakeup_menu')
                    task = asyncio.create_task(menu_a())
-               elif (dt_a == markov_t_1 or dt_a == markov_t_2 or dt_a == markov_t_3 or dt_a == markov_t_4 or dt_a == markov_t_5) and n_h == 0:
-                   n_h = n_h + 1
+               elif dt_a == markov_t_1  and n_h_1 == 0:
+                   n_h_1 = n_h_1 + 1
                    logger.debug('wakeup_markov')
                    task = asyncio.create_task(post_tl())
+               elif dt_a == markov_t_2 and n_h_2 == 0:
+                   n_h_2 = n_h_2 + 1
+                   logger.debug('wakeup_markov')
+                   task = asyncio.create_task(post_tl())
+               elif dt_a == markov_t_3 and n_h_3 == 0:
+                   n_h_3 = n_h_3 + 1
+                   logger.debug('wakeup_markov')
+                   task = asyncio.create_task(post_tl())
+               elif dt_a == markov_t_4 and n_h_4 == 0:
+                   n_h_4 = n_h_4 + 1
+                   logger.debug('wakeup_markov')
+                   task = asyncio.create_task(post_tl())
+               elif dt_a == markov_t_5 and n_h_5 == 0:
+                   n_h_5 = n_h_5 + 1
+                   logger.debug('wakeup_markov')
+                   task = asyncio.create_task(post_tl())
+               elif dt_a == weather_t and n_i == 0:
+                   n_i = n_i + 1
+                   logger.debug('wakeup_weather')
+                   task = asyncio.create_task(weather_get_sche())
                elif dt_a == 'test' and n_test == 0:
                   print(type(n_test))
                   n_test = n_test + 1
@@ -840,14 +987,16 @@ async def on_note(note,user):
             e.reply = note['text'].replace('@astrolabe ', '').replace('@astrolabe　', '')
             logger.debug(e.reply) 
             if e.reply.startswith(('help', 'info', '機能')):
-                info_text = ('''まず自由にリプライを下されば内容に応じた返信を致します。\n
- 次に冒頭のコマンドに応じた機能があります。
+                info_text = ('''私に興味を持って下さり、ありがとうございます。\n私にはたくさんの機能が搭載されています！！\n
+○自動的に様々なノートをします。
+・お天気、朝の挨拶、RSS配信、音楽のナウプレイング、アニメの思い出し、ご飯紹介、夜の挨拶、ノート増加数・フォロワー増加数の日次報告、マルコフ連鎖による自動ノート
+・「アストロラーベちゃん」とノートするとランダムで返信する機能、特定の文字に反応してカスタム絵文字リアクションをする機能 
+○リプライによるコマンド機能もあります。
 ・「help」「info」「機能」でこの内容を返信します
-・「remind」「リマインダー」でリマインダーを設定します（未実装）
-・「trans」「翻訳」で以後の文について日英翻訳します（未実装）
-・「wether」「天気」で指示頂いた場所の天気をお教えします（未実装）
-・「meal」「ごはんガチャ」でご飯ガチャを実施致します（未実装）
-and more......
+・「wether 都道府県」「天気 都道府県」でその都道府県の予報を返します。
+・「meal」「ごはんガチャ」でご飯ガチャをやります。
+・これらに該当しないリプライは全てLLMによって処理され、必ず何らかの内容を返信します。                             
+......
                              ''')
                 mk.notes_create(text=info_text, cw='わたくしアストロラーベの機能をご紹介します！', visibility=note['visibility'] , reply_id=note['id'])
                 logger.debug('help_post')  
@@ -864,7 +1013,71 @@ and more......
                 test = str(random.choices(column_data_a)).replace("['", "").replace("']", "")
                 test = '厳正なるご飯ガチャの結果は\n「' + test + '」でした！\nまたのご依頼、お待ちしています。\n（私は現在517の献立をご紹介できます！）'
                 mk.notes_create(text=test, visibility=note['visibility'] , reply_id=note['id'])
+            elif e.reply.startswith(('weather', '天気', '天気予報')):
+                input1 = e.reply
+                input1 = input1.replace('weather', '').replace('天気', '').replace('天気予報', '')
+                input1 = input1.replace(' ', '').replace('　', '')
+                #print(input1) 
+                if input1.endswith('東京'):
+                    input1 = input1 + '都'
+                elif input1.endswith(('大阪', '京都')):
+                    input1 = input1 + '府'
+                elif input1.endswith(('道', '都', '府','県')):
+                    pass
+                else :
+                    input1 = input1 + '県'
+                #print(input1)      
+                pref_get = input1
+                dbreader = DBReader(settings.dbname, "weather")
+                # 取得したい列番号を定義する
+                column_a = 3
+                column_b = 6
+                column_c = 14
+                column_d = 2
+                column_e = 7
+                column_f = 8
+                column_g = 9
+                # n列目のデータのリストを取得する
+                column_data_a = dbreader.get_column(column_a)
+                column_data_b = dbreader.get_column(column_b)
+                column_data_c = dbreader.get_column(column_c)
+                column_data_d = dbreader.get_column(column_d)
+
+
+                input1_test = [input1]
     
+                #print(column_data_a)
+                if input1 in  column_data_a:
+                    dt1 = datetime.datetime.now()
+                    name0 = (str(dt1.strftime('%Y年%m月%d日')))
+                    index1 = column_data_a.index(input1)
+                    url_get = column_data_b[index1]
+                    time_get = column_data_c[index1]
+                    id_get = column_data_d[index1]
+
+                    
+        
+                    if name0 == time_get:
+                        logger.debug('weather_reuse')  
+                        name1 = dbreader.get_column(column_e)
+                        name2 = dbreader.get_column(column_f)
+                        name3 = dbreader.get_column(column_g)
+                        name1 = str(name1[index1]).replace("['", "").replace("']", "")
+                        name2 = str(name1[index1]).replace("['", "").replace("']", "")
+                        name3 = str(name1[index1]).replace("['", "").replace("']", "")
+                        weather_mk = 'ご利用ありがとうございます！\n' + pref_get + 'のお天気は、今日は' + name1 + '\n明日は(も) ' + name2 + '\n明後日は(も)' + name3 + 'です。これは気象庁から取得した、' + name0 + '時点の予報です。\nこの予報を生命及び財産の保護等に使わないで下さい。\n(正確かつ最新の予報は直接取得して下さい)'
+                        #print(weather_mk)
+                    else :
+                        #print(url_get)
+                        logger.debug('weather_get')  
+                        task = asyncio.create_task(weather_get(url_get, id_get, pref_get))
+                        g_note = await task
+                        mk.notes_create(text=g_note, visibility=note['visibility'] , reply_id=note['id'])
+                        logger.debug('weather_post')  
+                else :
+                    g_note = '申し訳ありません。都道府県を認識出来ませんでした。\nこの機能はコマンドの為、「weather 都道府県」「天気 都道府県」の文法を厳守してください。（他に何も書かないでください）\n繰り返し失敗する場合はマスターにご連絡をお願いします。ID:' + settings.Master_NAME
+                    mk.notes_create(text=g_note, visibility=note['visibility'] , reply_id=note['id'])
+                    logger.debug('none_get_pref')  
             elif user['id'] == settings.Master_ID:#管理者用リプライ制御機能
                 logger.debug('scan_masterID') 
                 if e.reply.startswith(('停止', 'stop', '終了')):
@@ -875,7 +1088,10 @@ and more......
                     os.execv(sys.executable, ['python'] + sys.argv)
                 elif e.reply.startswith(('テスト', 'test', '試験')):
                     mk.notes_create(text='コードに設定されている関数を実行します', visibility=note['visibility'] , reply_id=note['id'])
-                    task = asyncio.create_task(post_tl())
+                    import nitizi
+                elif e.reply.startswith(('代理', '投稿', '代理投稿')):
+                    toukou = e.reply.replace('代理', '',1).replace('投稿', '',1).replace('代理投稿', '',1)
+                    mk.notes_create(text=toukou, visibility='home')
                 else:
                     logger.debug('lmm_start')  
                     #print('test04') 
@@ -911,7 +1127,7 @@ and more......
     else :
         try:
 
-            if (user['id'] == settings.AI_ID):
+            if user['id'] == settings.AI_ID:
                 logger.debug('into_home_else_astrolabe_note')
 
             else:

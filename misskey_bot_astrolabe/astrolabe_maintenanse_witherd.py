@@ -42,7 +42,7 @@ while True:
             print('変更されました:' + settings.csvname)
         elif path_conf_input == 2:
             settings.dbname = input('\n入力して下さい：')
-            print('変更されました:' + settings.dbnamee)
+            print('変更されました:' + settings.dbname)
         CSV_view = 0
         CSV_view = int(input('CSVを見たかったら1、そうで無かったら2:'))
         if CSV_view == 1:
