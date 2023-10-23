@@ -41,7 +41,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 
-Ver = 'v.1.01.06'
+Ver = 'v.1.01.07'
 logger = getLogger('astrolabe_logs')
 
 mk = Misskey(settings.ADRESS, i=settings.TOKEN)
@@ -73,9 +73,9 @@ def dt1():
         '''
         #dt2 = (str(dt1.strftime('%Y%m%d%H%M%S'))) + '.log'
         dt2 = settings.PATH + '/log/' + (str(dt1.strftime('%Y%m%d%H%M%S'))) + '.log'
-        logger.setLevel(DEBUG)
+        logger.setLevel(ERROR)
         fl_handler = FileHandler(filename= dt2 , encoding="utf-8")
-        fl_handler.setLevel(DEBUG)
+        fl_handler.setLevel(ERROR)
         fl_handler.setFormatter(Formatter(settings.FORMAT))
         logger.addHandler(fl_handler)
         logger.info("logging start")
@@ -1091,6 +1091,7 @@ async def on_note(note,user):
                     import nitizi
                 elif e.reply.startswith(('代理', '投稿', '代理投稿')):
                     toukou = e.reply.replace('代理', '',1).replace('投稿', '',1).replace('代理投稿', '',1)
+                    toukou = toukou.replace('にゃ', 'な')
                     mk.notes_create(text=toukou, visibility='home')
                 else:
                     logger.debug('lmm_start')  
@@ -1168,8 +1169,8 @@ async def on_note(note,user):
                         pass
                 else:
                     logger.debug('not_detection_astrolabe')
-                    scan_list_ohayou = r'ohayou|おはよう|おきた|起床'
-                    scan_list_oyasumi = r'ohayou|おはよう|おきた|起床'
+                    scan_list_ohayou = r'ohayou|おはよう|おきた|起床|morning'
+                    scan_list_oyasumi = r'oyasumi|おやすみ|寝る|就寝|good night'
                     scan_list_kawaii = r'カワイイ|可愛い|かわいい'
                     scan_list_oishii = r'美味しい|おいしい|おいしみ'
                     scan_list_tiken = r'知見があっぷ|知見がアップ|rs_tiken_up|ちけんがあっぷ|なんだ|らしい|にゃんだ'
