@@ -1,7 +1,6 @@
 #!//home/share/venv/bin/python3.11
 from logging import getLogger, Formatter, StreamHandler, FileHandler, DEBUG, INFO, WARNING, ERROR
 from timeit import Timer
-from misskey import Misskey
 import datetime
 import schedule
 from time import sleep
@@ -15,7 +14,6 @@ from transformers import pipeline
 import importlib
 import exchange as e
 import random
-import settings
 import feedparser
 import os
 import psutil
@@ -39,72 +37,399 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import configparser
+import subprocess
+
+Ver = 'v.1.90.00'
+print(Ver)
+logger = getLogger("astrolabe_logs")
+TOKEN = 0
+Master_ID = 0
+Master_NAME = 0
+TOKEN = 0
+AI_ID = 0
+AI_NAME = 0
+USER_NAME = 0
+LLMPATH = 0
 
 
-Ver = 'v.1.01.07'
-logger = getLogger('astrolabe_logs')
+SERVER_URL = 0
+RSS_URL_a = 0
+RSS_URL_b = 0
+cashtxt = 0
+home_cashtxt = 0
+cash2txt = 0
+note_list_ohayou = 0
+note_list_oyasumi = 0
+note_list_kawaii = 0
+note_list_oishii = 0
+note_list_tiken = 0
+note_list_gohan = 0
+note_list_labe = 0
+note_list_ittekimasu = 0
+note_list_kitaku = 0
+dbname = 0
+JSON_PATH = 0
 
-mk = Misskey(settings.ADRESS, i=settings.TOKEN)
+PATH = 0
+
+WS_URL = 0
+
+def config_main(ini_header, ini_key):
+    
+    PATH = os.path.dirname(os.path.abspath(__file__)) 
+    config_main_ini = configparser.ConfigParser(interpolation=None)
+    config_main_ini.read(fr'{PATH}/common.ini', encoding='utf-8-sig')
+    ini_header = ini_header.replace('"', '')
+    ini_key = ini_key.replace('"', '')
+
+    ini_header.replace('"', '')
+    
+    read_ini = config_main_ini[f'{ini_header}'][f'{ini_key}']
+    return read_ini
+
+def config_accounts(ini_header, ini_key):
+    PATH = os.path.dirname(os.path.abspath(__file__)) 
+    config_main_ini = configparser.ConfigParser(interpolation=None)
+    config_main_ini.read(fr'{PATH}/accounts.ini', encoding='utf-8-sig')
+    ini_header = ini_header.replace('"', '')
+    ini_key = ini_key.replace('"', '')
+    read_ini = config_main_ini[f'{ini_header}'][f'{ini_key}']
+    return read_ini
+
+def create_note(visibility, note_text):
+    try:
+        headers = {"Content-Type": "application/json"}
+        visibility = visibility.replace('"', '')
+        note_text = note_text.replace('"', '')
+        url1 = f"https://{SERVER_URL}/api/notes/create"
+        pyload1 = {
+    "i": f"{TOKEN}",
+    'visibility': f'{visibility}',
+    "text": f'{note_text}', 
+    }
+        pyload1 = json.dumps(pyload1)
+        r = requests.post(url1, data=pyload1, headers=headers) 
+        logger.debug(r)  
+    except Exception:
+        sys.exit()
+
+def create_dm(note_text, usr_id):
+    try:
+        #print('test2')
+        headers = {"Content-Type": "application/json"}
+        note_text = note_text.replace('"', '')
+        usr_id = usr_id.replace('"', '')
+        
+        url1 = f"https://{SERVER_URL}/api/notes/create"
+        pyload1 = {
+    "i": f"{TOKEN}",
+    'visibility': 'specified',
+    "text": f'{note_text}', 
+    "visibleUserIds": [usr_id]
+    }
+        
+        #print(url1)
+        #print(pyload1)
+        pyload1 = json.dumps(pyload1)
+        r = requests.post(url1, data=pyload1, headers=headers) 
+        logger.debug(r.text)  
+        #print(r.text)
+    except Exception:
+        logger.debug(traceback.format_exc())
+        sys.exit()
+
+def create_dm_cw(note_text, cw_text, usr_id):
+    try:
+        headers = {"Content-Type": "application/json"}
+        visibility = visibility.replace('"', '')
+        note_text = note_text.replace('"', '')
+        url1 = f"https://{SERVER_URL}/api/notes/create"
+        pyload1 = {
+    "i": f"{TOKEN}",
+    'visibility': 'specified',
+    "text": f'{note_text}', 
+    "visibleUserIds": [usr_id], 
+    "cw": f'{cw_text}'
+    
+    }
+        
+        #print(url1)
+        #print(pyload1)
+        pyload1 = json.dumps(pyload1)
+        r = requests.post(url1, data=pyload1, headers=headers) 
+        logger.debug(r.text)  
+        #print(r.text)
+    except Exception:
+        logger.debug(traceback.format_exc())
+        sys.exit()
+        
+def create_reply(visibility, note_text, note_id):
+    try:
+        headers = {"Content-Type": "application/json"}
+        visibility = visibility.replace('"', '')
+        note_text = note_text.replace('"', '')
+        url1 = f"https://{SERVER_URL}/api/notes/create"
+        pyload1 = {
+    "i": f"{TOKEN}",
+    'visibility': f'{visibility}',
+    "text": f'{note_text}', 
+    "replyId": f'{note_id}'
+    }
+        
+        #print(url1)
+        #print(pyload1)
+        pyload1 = json.dumps(pyload1)
+        r = requests.post(url1, data=pyload1, headers=headers) 
+        logger.debug(r.text)  
+        #print(r.text)
+    except Exception:
+        logger.debug(traceback.format_exc())
+        sys.exit()
+        
+def create_reply_cw(visibility, note_text, cw_text, note_id):
+    try:
+        headers = {"Content-Type": "application/json"}
+        visibility = visibility.replace('"', '')
+        cw_text = cw_text.replace('"', '')
+        note_text = note_text.replace('"', '')
+        url1 = f"https://{SERVER_URL}/api/notes/create"
+        pyload1 = {
+    "i": f"{TOKEN}",
+    'visibility': f'{visibility}',
+    "text": f'{note_text}', 
+    "cw": f'{cw_text}',
+    "replyId": f'{note_id}'
+    }
+        
+        #print(url1)
+        #print(pyload1)
+        pyload1 = json.dumps(pyload1)
+        r = requests.post(url1, data=pyload1, headers=headers) 
+        logger.debug(r.text)  
+        #print(r.text)
+    except Exception:
+        logger.debug(traceback.format_exc())
+        sys.exit()
+
+def create_note_cw(visibility, note_text, cw_text):
+    try:
+        headers = {"Content-Type": "application/json"}
+        visibility = visibility.replace('"', '')
+        cw_text = cw_text.replace('"', '')
+        note_text = note_text.replace('"', '')
+        url1 = f"https://{SERVER_URL}/api/notes/create"
+        pyload1 = {
+    "i": f"{TOKEN}",
+    'visibility': f'{visibility}',
+    "text": f'{note_text}', 
+    "cw": f'{cw_text}',
+    }
+        
+        #print(url1)
+        #print(pyload1)
+        pyload1 = json.dumps(pyload1)
+        r = requests.post(url1, data=pyload1, headers=headers) 
+        logger.debug(r.text)  
+        #print(r.text)
+    except Exception:
+        logger.debug(traceback.format_exc())
+        sys.exit()
+        
+def create_reaction(reaction, note_id):
+    try:
+        headers = {"Content-Type": "application/json"}
+        reaction = reaction.replace("'", '')
+        #print(reaction)
+        url3 = f"https://{SERVER_URL}/api/notes/reactions/create"
+        pyload3 = {
+    "i": f"{TOKEN}",
+    "noteId": f'{note_id}',
+    "reaction": f'{reaction}',
+        }
+        pyload3 = json.dumps(pyload3)
+        r = requests.post(url3, data=pyload3, headers=headers) 
+    except Exception:
+        pass
+    
+def create_follow(usr_id):
+    try:
+        headers = {"Content-Type": "application/json"}
+        #print(reaction)
+        url3 = f"https://{SERVER_URL}/api/following/create"
+        pyload3 = {
+    "i": f"{TOKEN}",
+    "userId": f'{usr_id}',
+        }
+        pyload3 = json.dumps(pyload3)
+        print('follow_ok')
+        r = requests.post(url3, data=pyload3, headers=headers) 
+    except Exception:
+        pass
+
+def delete_follow(usr_id):
+    try:
+        headers = {"Content-Type": "application/json"}
+        #print(reaction)
+        url3 = f"https://{SERVER_URL}/api/following/delete"
+        pyload3 = {
+    "i": f"{TOKEN}",
+    "userId": f'{usr_id}',
+        }
+        pyload3 = json.dumps(pyload3)
+        r = requests.post(url3, data=pyload3, headers=headers) 
+    except Exception:
+        pass
+
+def get_meta():
+    pass
+
+def get_emoji():
+    pass
+
+def json_write(key, value):
+    if type(key) == str:
+        key = key.replace('"', '')
+    if type(value) == str:
+        value = value.replace('"', '')
+    
+    with open(JSON_PATH) as f:
+        d_update = json.load(f)
+    d_update[f'{key}'] = value
+    with open(JSON_PATH, 'w') as f:
+        json.dump(d_update, f, indent=2)
+        
+def json_read(key):
+    pass
+    if type(key) == str:
+        key = key.replace('"', '')
+    with open(JSON_PATH) as f:
+        d_update = json.load(f)
+    return d_update[f'{key}']
+
+def json_reset():
+    pass
+    d_update = {
+    "n_a": 0,
+    "n_b": 0,
+    "n_c": 0,
+    "n_d_0": 0,
+    "n_d_1": 0, 
+    "n_d_2": 0, 
+    "n_e": 0,
+    "n_f": 0, 
+    "n_g": 0,
+    "n_h_1": 0,
+    "n_h_2": 0,
+    "n_h_3": 0,
+    "n_h_4": 0,
+    "n_h_5": 0,
+    "n_i": 0,
+    "n_test": 0,
+    "end_alos": 0
+}
+    with open(JSON_PATH, 'w') as f:
+        json.dump(d_update, f, indent=2)
+        
 
 def dt1():
     try:
-        #時間取得
+        global PATH
         dt1 = datetime.datetime.now()
-        #フォルダ生成系
-        log_path = settings.PATH + '/log'
-        model_path = settings.PATH + '/model'
-        model_path = settings.PATH + '/cash'
-        new_dir_path_recursive = log_path
-        new_dir_path_recursive_a = model_path
-        os.makedirs(new_dir_path_recursive, exist_ok=True)
-        os.makedirs(new_dir_path_recursive_a, exist_ok=True)
-        #DB記録系
-        '''
-        conn = sqlite3.connect(settings.dbname)
-        cur = conn.cursor()
-        cur.execute("UPDATE time_db SET time = ? WHERE name = 'first_time'", (dt1,))
-        #print(dt1)
-        sql = "SELECT * FROM time_db"
-        df = pd.read_sql_query(sql, conn)
-        #print(df)
-        conn.commit()
-        cur.close()
-        conn.close()
-        '''
-        #dt2 = (str(dt1.strftime('%Y%m%d%H%M%S'))) + '.log'
-        dt2 = settings.PATH + '/log/' + (str(dt1.strftime('%Y%m%d%H%M%S'))) + '.log'
-        logger.setLevel(ERROR)
+        PATH = os.path.dirname(os.path.abspath(__file__)) 
+        
+
+        FORMAT = config_main("INSTANCE", "format")
+        FORMAT = FORMAT.replace('"', '')
+        args = sys.argv
+        log_date = args[1]
+        dt2 = PATH + '/log/' + log_date + '.log'
+        logger.setLevel(DEBUG)
         fl_handler = FileHandler(filename= dt2 , encoding="utf-8")
-        fl_handler.setLevel(ERROR)
-        fl_handler.setFormatter(Formatter(settings.FORMAT))
+        fl_handler.setLevel(DEBUG)
+        fl_handler.setFormatter(Formatter(FORMAT))
         logger.addHandler(fl_handler)
-        logger.info("logging start")
-    
+        global SERVER_URL
+        global RSS_URL_a
+        global RSS_URL_b 
+        global RSS_URL_c
+        global cashtxt
+        global home_cashtxt
+        global cash2txt
+        global note_list_ohayou
+        global note_list_oyasumi
+        global note_list_kawaii
+        global note_list_oishii
+        global note_list_tiken
+        global note_list_gohan
+        global note_list_labe
+        global note_list_ittekimasu
+        global note_list_kitaku
+        global dbname
+        global JSON_PATH
+        
+        
+        SERVER_URL = config_main("INSTANCE", "SERVER_URL")
+        RSS_URL_a = config_main("INSTANCE", "RSS_URL_a")
+        RSS_URL_b = config_main("INSTANCE", "RSS_URL_b")
+        RSS_URL_c = config_main("INSTANCE", "RSS_URL_c")
+        cashtxt = config_main("INSTANCE", "cashtxt")
+        cashtxt = PATH + "/" + cashtxt
+        home_cashtxt = config_main("INSTANCE", "home_cashtxt")
+        home_cashtxt = PATH + "/" + home_cashtxt
+        cash2txt = config_main("INSTANCE", "cash2txt")
+        cash2txt = PATH + "/" + cash2txt
+        note_list_ohayou = config_main("INSTANCE", "note_list_ohayou")
+        note_list_oyasumi = config_main("INSTANCE", "note_list_oyasumi")
+        note_list_kawaii = config_main("INSTANCE", "note_list_kawaii")
+        note_list_oishii = config_main("INSTANCE", "note_list_oishii")
+        note_list_tiken = config_main("INSTANCE", "note_list_tiken")
+        note_list_gohan = config_main("INSTANCE", "note_list_gohan")
+        note_list_labe = config_main("INSTANCE", "note_list_labe")
+        note_list_ittekimasu = config_main("INSTANCE", "note_list_ittekimasu")
+        note_list_kitaku = config_main("INSTANCE", "note_list_kitaku")
+        dbname = config_main("INSTANCE", "dbname")
+        dbname = PATH + "/" + dbname
+        JSON_NAME = config_main("INSTANCE", "JSON_NAME")
+        JSON_PATH = PATH + "/" + JSON_NAME  
+
+        #print(type(note_list_ohayou))
+        global Master_ID
+        global Master_NAME
+        global TOKEN
+        global AI_ID
+        global AI_NAME
+        global USER_NAME
+        global LLMPATH
 
 
-
-        #ログ系
-        #logger.info("def_dt1 clear")
-        #logger.info("ALos_sys_booting_now!")
-        #logger.info(Ver)
-        #print("ALos_sys_booting_now!")
-        #(sys.executable)
-        #print(settings.alosname)
-        #print(sys.argv)
-        #print('アストロラーベのプロセスが始動しました。')
-        #print(dt1)
-        time.sleep(5)
-
-    
+        TOKEN = config_accounts("MAIN", "TOKEN")
+        Master_ID = config_accounts("MAIN", "Master_ID")
+        Master_NAME = config_accounts("MAIN", "Master_NAME")
+        AI_ID = config_accounts("MAIN", "AI_ID")
+        AI_NAME = config_accounts("MAIN", "AI_NAME")
+        USER_NAME = config_accounts("MAIN", "USER_NAME")
+        LLMPATH = config_accounts("MAIN", "LLMPATH")
+        LLMPATH = PATH + "/" + LLMPATH
+        global WS_URL
+        WS_URL_a = 'wss://' + SERVER_URL + '/streaming?i='
+        WS_URL = WS_URL_a + TOKEN
+        print(WS_URL)
         opinion_text = ('アストロラーベのシステムが起動しました\n' + str(dt1) + '\n' +  Ver)
-        mk.notes_create(text=opinion_text, visibility='specified' , visible_user_ids=[settings.Master_ID])
-    
+        
+        create_dm(opinion_text, Master_ID)
+        print('test')
         #os.exit
+
     except Exception:
         logger.debug(traceback.format_exc())
         logger.error('Connection_closed_global')
-        os.execv(sys.executable, ['python'] + sys.argv)
+        sys.exit()
 dt1()#起動時のみの動作を内部に書く
+
+
+
+
 
 ###########class###############
 
@@ -209,7 +534,7 @@ async def global_runner():#グローバル受信系
 
                     logger.debug(traceback.format_exc())
                     logger.error('Connection_closed_global')
-                    #os.execv(sys.executable, ['python'] + sys.argv)
+                    #sys.exit()
         
         except Exception:
 
@@ -217,7 +542,7 @@ async def global_runner():#グローバル受信系
             logger.error('Connection_closed_global')
 
             #print('error')
-            #os.execv(sys.executable, ['python'] + sys.argv)         #
+            #sys.exit()         #
 
 async def note_captcha():# ノート取得
     try:
@@ -229,7 +554,7 @@ async def note_captcha():# ノート取得
         node = g_note
     
         #print(node) 
-        with open(settings.cashtxt, 'a', encoding='utf-8') as f:
+        with open(cashtxt, 'a', encoding='utf-8') as f:
             f.writelines(node)
             logger.debug('write_cashtxt')
     except Exception:
@@ -241,20 +566,20 @@ async def post_tl():# テキスト処理→テキスト生成→投稿
         await note_captcha()
     
         #print('back captcha')
-        with open(settings.cashtxt, "r", encoding = 'utf-8') as f1:
+        with open(cashtxt, "r", encoding = 'utf-8') as f1:
             text1 = f1.read()
             #print(text1)
-        with open(settings.home_cashtxt, "r", encoding = 'utf-8') as f2:
+        with open(home_cashtxt, "r", encoding = 'utf-8') as f2:
             text2 = f2.read()
             #print(text2)
-        with open(settings.cash2txt, "w", encoding = 'utf-8') as f3:
+        with open(cash2txt, "w", encoding = 'utf-8') as f3:
             text3 = text1 + text2
             f3.write(text3)
 
         mecab = MeCab.Tagger('-Owakati')
         text_1 = ''
         # ファイルを開く
-        with open(settings.cash2txt, "r", encoding = 'utf-8') as f:
+        with open(cash2txt, "r", encoding = 'utf-8') as f:
             for line in f:# テキストファイルの品質確保
                 node = re.sub(r'\b\w{1,10}\n', '', line)
                 text_1 += node
@@ -264,13 +589,13 @@ async def post_tl():# テキスト処理→テキスト生成→投稿
                 node = mecab.parse(text_f)
                 #print(node)
                 text_1 += node
-        text_model = markovify.NewlineText(text_1, state_size=1, well_formed=False)#モデル生成
-        dbreader = DBReader(settings.dbname, "rssqa_1")
+        text_model = markovify.NewlineText(text_1, state_size=2, well_formed=False)#モデル生成
+        dbreader = DBReader(dbname, "rssqa_1")
         column_a = 0
         column_data_a = dbreader.get_column(column_a)
         n_a = 0
         while True:
-            markov_text = (text_model.make_short_sentence(60)) 
+            markov_text = (text_model.make_short_sentence(40)) 
             markov_text = markov_text.replace(' ', '').replace('@astrolabe　', '')
             #print(markov_text)
             '''
@@ -282,10 +607,10 @@ async def post_tl():# テキスト処理→テキスト生成→投稿
             if ():
                 pass    
             else :
-                mk.notes_create(text=markov_text)
+                create_note("public", markov_text)  
                 logger.debug('markov_post')
                 #字数制御ブロック（グローバル）
-                with open(settings.cashtxt, "r", encoding = 'utf-8') as f:
+                with open(cashtxt, "r", encoding = 'utf-8') as f:
                     text = f.read()
 
                 if len(text) > 2000:
@@ -293,18 +618,18 @@ async def post_tl():# テキスト処理→テキスト生成→投稿
                     line_count = len(text) // 2
                     new_text = text[line_count:]
                     # テキストファイルを書き換える
-                    with open(settings.cashtxt, "w", encoding = 'utf-8') as f:
+                    with open(cashtxt, "w", encoding = 'utf-8') as f:
                         f.write(new_text)
                         logger.debug('cashtxt_rewrite')
                 elif len(text) > 10000:
                     new_text = ''
-                    with open(settings.cashtxt, "w", encoding = 'utf-8') as f:
+                    with open(cashtxt, "w", encoding = 'utf-8') as f:
                         f.write(new_text)
                         logger.debug('cashtxt_over10000_clear')
                 
 
                 #字数制御ブロック（ホーム）     
-                with open(settings.home_cashtxt, "r", encoding = 'utf-8') as f:
+                with open(home_cashtxt, "r", encoding = 'utf-8') as f:
                     text = f.read()
                 
                 if len(text) > 500:
@@ -315,16 +640,16 @@ async def post_tl():# テキスト処理→テキスト生成→投稿
                     new_text = text[line_count:]
 
                     # テキストファイルを書き換える
-                    with open(settings.home_cashtxt, "w", encoding = 'utf-8') as f:
+                    with open(home_cashtxt, "w", encoding = 'utf-8') as f:
                         f.write(new_text)
                         logger.debug('home_cashtxt_rewrite')
                 elif len(text) > 10000:
                     new_text = ''
-                    with open(settings.home_cashtxt, "w", encoding = 'utf-8') as f:
+                    with open(home_cashtxt, "w", encoding = 'utf-8') as f:
                         f.write(new_text)
                         logger.debug('home_cashtxt_over10000_clear')
                 #結合用の一時ファイル消去
-                with open(settings.cash2txt, "w", encoding = 'utf-8') as f:
+                with open(cash2txt, "w", encoding = 'utf-8') as f:
                     f.write("")
                     logger.debug('cash2txt_clear')
                 break
@@ -340,11 +665,12 @@ async def post_tl():# テキスト処理→テキスト生成→投稿
         logger.debug('occurrence_exception')
 
 ###########schedule_exe#########
+###########schedule_exe#########
 
 async def ohayou():
     	
 	# DBReaderクラスのインスタンスを作成する
-	dbreader = DBReader(settings.dbname, "ohayou")
+	dbreader = DBReader(dbname, "ohayou")
 	# 取得したい列番号を定義する
 	column_a = 2
 	column_b = 3
@@ -371,12 +697,12 @@ async def ohayou():
 	
 	test_a = (test)
 	#投稿関数
-	mk.notes_create(text=test_a)
+	create_note("public", test_a)  
 	logger.info("def_ohayou clear")    
 
 async def oyasumi():
     # DBReaderクラスのインスタンスを作成する
-    dbreader = DBReader(settings.dbname, "oyasumi")
+    dbreader = DBReader(dbname, "oyasumi")
     # 取得したい列番号を定義する
     column_a = 2
     column_b = 3
@@ -404,7 +730,7 @@ async def oyasumi():
     test_a = (test)
     #投稿関数
     logger.debug(test_a)  
-    mk.notes_create(text=test_a)
+    create_note("public", test_a)  
     logger.info("def_oyasumi_oyasumi clear")  
     timer2 = random.randint(0, 50)
     timer2 = float(timer2)
@@ -414,8 +740,8 @@ async def oyasumi():
     return 'test'
 
 async def rss_a():
-    dbreader = DBReader(settings.dbname, "rssqa_1")
-    dbreader_a = DBReader(settings.dbname, "rss_reaction_1")
+    dbreader = DBReader(dbname, "rssqa_1")
+    dbreader_a = DBReader(dbname, "rss_reaction_1")
     # 取得したい列番号を定義する
     column_a = 0
     column_b = 1
@@ -439,7 +765,7 @@ async def rss_a():
     while True:
 
         n= random.randint(1, 10)
-        feed = feedparser.parse(settings.RSS_URL_a)
+        feed = feedparser.parse(RSS_URL_a)
         url = feed.entries[n].link
         title_a = feed.entries[n].title
         #print(column_data_a)
@@ -457,7 +783,7 @@ async def rss_a():
                 n_a = n_a + 1
                 text_a = (test + '\n\n' + title_a + '\n' + url)
                 #print(text_a)
-                mk.notes_create(text=text_a)
+                create_note("public", text_a) 
                 logger.info("def_rss_a clear(post)")    
                 break
         elif n_a >= 10:
@@ -465,8 +791,61 @@ async def rss_a():
             break    
 
 async def rss_b():
-    dbreader = DBReader(settings.dbname, "rssqa_1")
-    dbreader_a = DBReader(settings.dbname, "rss_reaction_1")
+    dbreader = DBReader(dbname, "rssqa_1")
+    dbreader_a = DBReader(dbname, "rss_reaction_1")
+    # 取得したい列番号を定義する
+    column_a = 0
+    column_b = 1
+    column_c = 2
+    # QAWord
+    column_data_a = dbreader.get_column(column_a)
+    # Reaction and waight
+    column_data_a_a = dbreader_a.get_column(column_a)
+    #print(column_data_a_a)
+    column_data_a_b = dbreader_a.get_column(column_c)
+    #print(column_data_a_b)
+    test = random.choices(column_data_a_b, weights=column_data_a_a)
+    test = str(test).replace("['", "").replace("']", "")
+    
+    timer = random.randint(0, 50)
+    timer = float(timer)
+    await asyncio.sleep(timer) 
+    #print(RSS_URL_b)
+    #print(test)
+    n_a = 0
+    while True:
+
+        n= random.randint(1, 8)
+        feed = feedparser.parse(RSS_URL_b)
+        #print(feed)
+        url = feed.entries[n].link
+        title_a = feed.entries[n].title
+        #print(column_data_a)
+        # リストの内容を表示する
+        judge = (any(x in title_a for x in column_data_a))
+        if n_a <= 10:
+            if judge:
+                #print(title_a)    
+                #print('test1') 
+                n_a = n_a + 1
+                continue
+            else :
+                #print(title_a)     
+                #print('test2')  
+                n_a = n_a + 1
+                text_a = (test + '\n\n' + title_a + '\n' + url)
+                #print(text_a)
+                create_note("public", text_a)  
+                logger.info("def_rss_b clear(post)")    
+                break
+        elif n_a >= 10:
+            logger.info("def_rss_b clear(Over_10)")    
+            break    
+
+
+async def rss_c():
+    dbreader = DBReader(dbname, "rssqa_1")
+    dbreader_a = DBReader(dbname, "rss_reaction_1")
     # 取得したい列番号を定義する
     column_a = 0
     column_b = 1
@@ -490,7 +869,7 @@ async def rss_b():
     while True:
 
         n= random.randint(1, 8)
-        feed = feedparser.parse(settings.RSS_URL_b)
+        feed = feedparser.parse(RSS_URL_c)
         url = feed.entries[n].link
         title_a = feed.entries[n].title
         #print(column_data_a)
@@ -508,12 +887,14 @@ async def rss_b():
                 n_a = n_a + 1
                 text_a = (test + '\n\n' + title_a + '\n' + url)
                 #print(text_a)
-                mk.notes_create(text=text_a)
+                create_note("public", text_a)  
                 logger.info("def_rss_b clear(post)")    
                 break
         elif n_a >= 10:
             logger.info("def_rss_b clear(Over_10)")    
             break    
+
+
 
 async def sys_check_a():
     cpu_per__ = (psutil.cpu_percent(interval=1, percpu=True))
@@ -523,26 +904,26 @@ async def sys_check_a():
        usage__ = str(usage__)
        cpu_per_a = str(cpu_per_a)
        cpu_and_disk = 'CPU利用率及びディスク使用率が許容値を超過しました。ディスク使用率：' + usage__ + '％、CPU利用率：' + cpu_per_a + '％'
-       mk.notes_create(text=cpu_and_disk, visibility='specified' , visible_user_ids=[settings.Master_ID])
+       create_dm(cpu_and_disk, Master_ID)
        logger.warning("def_sys_check_diskuse(Over_90)_and_cpu_max_per(Over_90)")
        return
     elif usage__ >= 90.0:
        usage__ = str(usage__)
        usage_a = 'ディスク使用率が90％を超過したことを検知しました。\nシステムに影響を及ぼす可能性があります。\n' + '現在使用率:' + usage__ + '％'
-       mk.notes_create(text=usage_a, visibility='specified' , visible_user_ids=[settings.Master_ID])
+       create_dm(usage_a, Master_ID)
        logger.warning("def_sys_check_diskuse(Over_90)")
        return
     elif cpu_per_a >= 90.0:
        cpu_per_a = str(cpu_per_a)
        cpu_per_a_a =  'CPU論理プロセッサの最大利用率が90％を超過したことを検知しました。\nシステムに影響を及ぼす可能性があります。\n' + '現在使用率:' +  cpu_per_a + '％'
-       mk.notes_create(text=cpu_per_a_a, visibility='specified' , visible_user_ids=[settings.Master_ID])
+       create_dm(cpu_per_a_a, Master_ID)
        logger.warning("def_sys_check_cpu_max_per(Over_90)")
        return
     else:
        logger.debug(cpu_per_a)  
        logger.debug(usage__)  
        sys_check_pass = 'システムチェックの結果問題はありませんでした'
-       mk.notes_create(text=sys_check_pass, visibility='specified' , visible_user_ids=[settings.Master_ID])
+       create_dm(sys_check_pass, Master_ID)
        logger.debug('syscheck_pass')  
        #print(cpu_per_a)
        #print(usage__)
@@ -550,7 +931,7 @@ async def sys_check_a():
 
 async def now_play():
     # DBReaderクラスのインスタンスを作成する
-    dbreader = DBReader(settings.dbname, "music")
+    dbreader = DBReader(dbname, "music")
     column_a = 2 # タイトル
     column_b = 3 # アーティスト
     column_c = 4 # アルバム
@@ -581,13 +962,13 @@ async def now_play():
     test_a = (test)
     #投稿関数
     logger.debug(test_a)  
-    mk.notes_create(text=test_a)
+    create_note("public", test_a)  
     logger.info("def_now_play_clear")      
 
 async def anime_def():
     	
     # DBReaderクラスのインスタンスを作成する
-    dbreader = DBReader(settings.dbname, "anime")
+    dbreader = DBReader(dbname, "anime")
     # 取得したい列番号を定義する
     column_a = 6 # title
     column_b = 8 # year
@@ -651,12 +1032,12 @@ async def anime_def():
     test_a = (test)
     #print(test)    
     #投稿関数
-    mk.notes_create(text=test_a)
+    create_note("public", test_a)  
     
 async def menu_a():
     try:
         # DBReaderクラスのインスタンスを作成する
-        dbreader = DBReader(settings.dbname, "menu")
+        dbreader = DBReader(dbname, "menu")
         column_a = 0
         column_data_a = dbreader.get_column(column_a) 
         test = str(random.choices(column_data_a)).replace("['", "").replace("']", "").replace("\u3000", " ")
@@ -672,18 +1053,18 @@ async def menu_a():
             test_a = '献立って決めるの大変ですよね。そんな時はご飯ガチャを使います！\nということで出てきたのは「' + test + '」！\n出したからには頑張って作ります！'
         elif random_a == 4:
             test_a = 'ば、晩ご飯の時間ですけど、おやつ食べ過ぎちゃって食欲が、、うぅ、、ごめんなさい'
-            mk.notes_create(text=test_a)
+            create_note("public", test_a)  
             return test_a
             #投稿関数
         logger.debug('post_menu_dennar')  
-        mk.notes_create(text=test_a)
+        create_note("public", test_a)  
         timer2 = int(random.randint(39600, 46800))
         timer2 = float(timer2)
         logger.debug(timer2)  
         test_a = 'お腹減ってきたなぁ\nそういえば昨日の夜食べた「' + test + '」冷蔵庫に残ってたかも。\n温め直して食べよっと！'
         logger.debug('post_menu_moning')
         await asyncio.sleep(timer2)
-        mk.notes_create(text=test_a)
+        create_note("public", test_a)  
         logger.info("def_menu_clear") 
     except Exception:
         logger.debug(traceback.format_exc())
@@ -717,7 +1098,7 @@ async def weather_get(url_get, id_get, pref_get):
     name1 = str(elements_get[0])
     name2 = str(elements_get[1])
     name3 = str(elements_get[2])
-    conn = sqlite3.connect(settings.dbname)
+    conn = sqlite3.connect(dbname)
     cur = conn.cursor()
     sql = "SELECT * FROM weather"
     cur.execute(sql)
@@ -743,7 +1124,7 @@ async def weather_get(url_get, id_get, pref_get):
     #print(weather_mk)
 
 async def weather_get_sche():
-    dbreader = DBReader(settings.dbname, "weather")
+    dbreader = DBReader(dbname, "weather")
     column_a = 3
     column_b = 6
     column_c = 14
@@ -762,15 +1143,13 @@ async def weather_get_sche():
     g_note = await task
     g_note = g_note.replace('ご利用ありがとうございます！\n', '')
     g_note = '今日のランダム地点お天気です！\n\n' + g_note
-    mk.notes_create(text=g_note)
+    create_note("public", g_note)  
 
 async def asy_test():
     await asyncio.sleep(5)
     print('async test')
    
-MY_ID = mk.i()['id']
-WS_URL_a = 'wss://' + settings.ADRESS + '?i='
-WS_URL = WS_URL_a + settings.TOKEN
+
 
 ###########schedule_ctrl##############
 
@@ -778,6 +1157,9 @@ async def schedule_coroutine():
 
     while True:
        try:
+           
+           with open(JSON_PATH) as f:
+               d_update = json.load(f)
            #時間管理
            logger.debug('1st_circ')
            ohayou_r = str(random.randint(0, 59))
@@ -796,6 +1178,7 @@ async def schedule_coroutine():
            sys_check_a_t = '04:00'
            rss_a_t = str(random.randint(12, 13)) + ':' + (rss_a_r.zfill(2))
            rss_b_t = (rss_b_r_1.zfill(2)) + ':' + (rss_b_r.zfill(2))
+           rss_c_t = str(random.randint(15, 18)) + ':' + (anime_r.zfill(2))
            nowplay = str(random.randint(10, 20)) + ':' + (nowplay_r.zfill(2))
            anime = str(random.randint(18, 21)) + ':' + (anime_r.zfill(2))
            menu = str(random.randint(19, 21)) + ':' + (menu_r.zfill(2))
@@ -811,6 +1194,8 @@ async def schedule_coroutine():
            logger.debug(oyasumi_t)
            logger.debug(rss_a_t)
            logger.debug(rss_b_t)
+           logger.debug(rss_c_t)
+
            logger.debug(nowplay)
            logger.debug(anime)
            logger.debug(markov_t_1)
@@ -819,97 +1204,84 @@ async def schedule_coroutine():
            logger.debug(markov_t_4)
            logger.debug(markov_t_5)
            #動作制御
-           n_a = 0#おはよう
-           n_b = 0#おやすみ
-           n_c = 0#システムチェック
-           n_d = 0#RSS_A
-           n_d_1 = 0#RSS_B
-           n_e = 0#nowplay
-           n_f = 0#anime
-           n_g = 0#menu
-           n_h_1 = 0#markov
-           n_h_2 = 0#markov
-           n_h_3 = 0#markov
-           n_h_4 = 0#markov
-           n_h_5 = 0#markov
-           n_i = 0#weather
 
-           n_test = 1#async def test直結
            n_date = 1#リセット用(1で正常。23:59に起こす)
            while True:
                dt = datetime.datetime.now()
                dt_a = (str(dt.strftime('%H:%M')))
-               if dt_a == ohayou_t and n_a == 0:
-                  n_a = n_a + 1
+               if dt_a == ohayou_t and json_read("n_a") == 0:                  
                   logger.debug('wakeup_ohayou')
                   task = asyncio.create_task(ohayou())
-               elif dt_a == oyasumi_t and n_b == 0:
+                  json_write("n_a", 1)
+               elif dt_a == oyasumi_t and json_read("n_b") == 0:
                    logger.debug('wakeup_oyasumi')
-                   n_b = n_b + 1
                    task = asyncio.create_task(oyasumi())
-               elif dt_a == sys_check_a_t and n_c == 0:
-                   n_c = n_c + 1
+                   json_write("n_b", 1)
+               elif dt_a == sys_check_a_t and json_read("n_c") == 0:
                    logger.debug('wakeup_sys_check')
                    task = asyncio.create_task(sys_check_a())
-               elif dt_a ==  rss_a_t and n_d == 0:
-                   n_d = n_d + 1
+                   json_write("n_c", 1)
+               elif dt_a ==  rss_a_t and json_read("n_d_0") == 0:
                    logger.debug('wakeup_rss_a')
                    task = asyncio.create_task(rss_a())
-                  
-               elif dt_a ==  rss_b_t and n_d_1 == 0:
-                   n_d_1 = n_d_1 + 1
+                   json_write("n_d_0", 1)
+               elif dt_a ==  rss_b_t and json_read("n_d_1") == 0:
                    logger.debug('wakeup_rss_b')
                    task = asyncio.create_task(rss_b())
-               elif dt_a ==  nowplay and n_e == 0:
-                   n_e = n_e + 1
+                   json_write("n_d_1", 1)
+               elif dt_a ==  rss_c_t and json_read("n_d_2") == 0:
+                   logger.debug('wakeup_rss_c')
+                   task = asyncio.create_task(rss_c())
+                   json_write("n_d_2", 1)
+               elif dt_a ==  nowplay and json_read("n_e") == 0:
                    logger.debug('wakeup_nowplay_waight')
-                   now_r = random.choices([0, 1], weights=[1, 2])
+                   now_r = random.choices([0, 1], weights=[1, 0.5])
                    logger.debug(now_r)
+                   json_write("n_e", 1)
                    if now_r == [0]:
                        logger.debug('wakeup_nowplay')
                        task = asyncio.create_task(now_play())
-               elif dt_a == anime and n_f == 0:
+                       
+               elif dt_a == anime and json_read("n_f") == 0:
                    pass
-                   n_f = n_f + 1
                    logger.debug('wakeup_anime_waight')
-                   now_r = random.choices([0, 1], weights=[1, 2])
+                   now_r = random.choices([0, 1], weights=[1, 1.5])
                    logger.debug(now_r)
-                   
+                   json_write("n_f", 1)
                    if now_r == [0]:
                        logger.debug('wakeup_anime_def')
                        task = asyncio.create_task(anime_def())
-               elif dt_a == anime and n_g == 0:
-                   n_g = n_g + 1
+               elif dt_a == anime and json_read("n_g") == 0:
                    logger.debug('wakeup_menu')
                    task = asyncio.create_task(menu_a())
-               elif dt_a == markov_t_1  and n_h_1 == 0:
-                   n_h_1 = n_h_1 + 1
+                   json_write("n_g", 1)
+               elif dt_a == markov_t_1  and json_read("n_h_1") == 0:
                    logger.debug('wakeup_markov')
                    task = asyncio.create_task(post_tl())
-               elif dt_a == markov_t_2 and n_h_2 == 0:
-                   n_h_2 = n_h_2 + 1
+                   json_write("n_h_1", 1)
+               elif dt_a == markov_t_2 and json_read("n_h_2") == 0:
                    logger.debug('wakeup_markov')
                    task = asyncio.create_task(post_tl())
-               elif dt_a == markov_t_3 and n_h_3 == 0:
-                   n_h_3 = n_h_3 + 1
+                   json_write("n_h_2", 1)
+               elif dt_a == markov_t_3 and json_read("n_h_3") == 0:
                    logger.debug('wakeup_markov')
                    task = asyncio.create_task(post_tl())
-               elif dt_a == markov_t_4 and n_h_4 == 0:
-                   n_h_4 = n_h_4 + 1
+                   json_write("n_h_3", 1)
+               elif dt_a == markov_t_4 and json_read("n_h_4") == 0:
                    logger.debug('wakeup_markov')
                    task = asyncio.create_task(post_tl())
-               elif dt_a == markov_t_5 and n_h_5 == 0:
-                   n_h_5 = n_h_5 + 1
+                   json_write("n_h_4", 1)
+               elif dt_a == markov_t_5 and json_read("n_h_5") == 0:
                    logger.debug('wakeup_markov')
                    task = asyncio.create_task(post_tl())
-               elif dt_a == weather_t and n_i == 0:
-                   n_i = n_i + 1
+                   json_write("n_h_5", 1)
+               elif dt_a == weather_t and json_read("n_i") == 0:
                    logger.debug('wakeup_weather')
                    task = asyncio.create_task(weather_get_sche())
-               elif dt_a == 'test' and n_test == 0:
-                  print(type(n_test))
-                  n_test = n_test + 1
+                   json_write("n_i", 1)
+               elif dt_a == 'test' and json_read("n_test") == 0:
                   logger.debug('wakeup_asy_test')
+                  json_write("n_test", 1)
                   await asy_test()
 
                #以後周回処理
@@ -918,16 +1290,16 @@ async def schedule_coroutine():
                    n_date = 0
                elif dt_a == '00:00' and n_date == 0:
                    logger.debug('circle_break')
+                   json_reset()
                    break
-               else:
-                  pass
-               await asyncio.sleep(10)
+               await asyncio.sleep(60)
            continue
        except Exception:
             logger.debug(traceback.format_exc())
             logger.info('schedule_coroutine_exception')
 
 ###########home_get##############
+
 
 async def runner():
  #task1 = asyncio.create_task(schedule_a())
@@ -953,27 +1325,62 @@ async def runner():
                        note = data['body']['body']
                        user = data['body']['body']['user']
                        task = asyncio.create_task(on_note(note, user))
-                   elif data['body']['type'] == 'followed':
-                       user = data['body']['body']
-                       task = asyncio.create_task(on_follow(user))
           except Exception:
                logger.debug(traceback.format_exc())
                logger.error('Connection_closed')
-               os.execv(sys.executable, ['python'] + sys.argv)
+               sys.exit()
         
   except Exception:
       logger.debug(traceback.format_exc())
       logger.error('ws_error')
-      os.execv(sys.executable, ['python'] + sys.argv)
-
-###########home_folloing#########
+      sys.exit()
       
-async def on_follow(user):
-    try:
-        mk.following_create(user['id'])
-        logger.info('refollow_clear')
-    except:
-        logger.error('refollow_error') 
+###########main_get##############
+
+async def runner_main():
+ #task1 = asyncio.create_task(schedule_a())
+ #await task1
+ async with websockets.connect(WS_URL) as ws:
+  try:
+      await ws.send(json.dumps({
+          "type": "connect",
+          "body": {
+                   "channel": "main",
+                   "id": "test"
+                   }
+          }))
+      data = json.loads(await ws.recv())
+      #rint("test2")
+      while True:
+          #print("test3")
+          try:
+     
+     
+               data = json.loads(await ws.recv())
+               #print(data)
+               
+               if data['type'] == 'channel':
+                   #print('channel')
+                   test = data['body']['type']
+                   #print(test)
+                   if data['body']['type'] == 'followed': 
+                       #print('follow')
+                       user = data['body']['body']['id']
+                       #print(user)
+                       create_follow(user)
+                       #task = asyncio.create_task(on_follow(user))
+
+
+          except Exception:
+               pass
+               #print((traceback.format_exc()))
+
+        
+  except Exception:
+
+      sys.exit()
+
+
 
 ###########home_exe(mention,reaction,call)##############
 
@@ -981,7 +1388,7 @@ async def on_note(note,user):
     logger.debug('async_def_onnote')
     if note.get('mentions'):
         logger.debug('scan_mention')  
-        if MY_ID in note['mentions']:
+        if AI_ID in note['mentions']:
             logger.debug('scan_mention_myid')  
             USER_NAME = 'test_name'
             e.reply = note['text'].replace('@astrolabe ', '').replace('@astrolabe　', '')
@@ -998,21 +1405,39 @@ async def on_note(note,user):
 ・これらに該当しないリプライは全てLLMによって処理され、必ず何らかの内容を返信します。                             
 ......
                              ''')
-                mk.notes_create(text=info_text, cw='わたくしアストロラーベの機能をご紹介します！', visibility=note['visibility'] , reply_id=note['id'])
+                cw_text = 'わたくしアストロラーベの機能をご紹介します！'
+                create_reply_cw(note['visibility'], info_text, cw_text, note['id'])
                 logger.debug('help_post')  
             elif e.reply.startswith(('Version', 'バージョン', '世代', '死活')):
                 dt1 = datetime.datetime.now()
                 dt1 =(str(dt1.strftime('%Y年%m月%d日%H時%M分%S秒')))
                 opinion_text = ('アストロラーベは稼働中です\n' + dt1 + '\n' +  Ver)
                 logger.debug('version_post')  
-                mk.notes_create(text=opinion_text, visibility=note['visibility'] , reply_id=note['id'])
+                create_reply(note['visibility'], opinion_text, note['id'])
             elif e.reply.startswith(('meal', 'ご飯ガチャ', 'ごはん', 'ご飯', '献立')):
-                dbreader = DBReader(settings.dbname, "menu")
+                dbreader = DBReader(dbname, "menu")
                 column_a = 0
                 column_data_a = dbreader.get_column(column_a) 
                 test = str(random.choices(column_data_a)).replace("['", "").replace("']", "")
                 test = '厳正なるご飯ガチャの結果は\n「' + test + '」でした！\nまたのご依頼、お待ちしています。\n（私は現在517の献立をご紹介できます！）'
-                mk.notes_create(text=test, visibility=note['visibility'] , reply_id=note['id'])
+                create_reply(note['visibility'], test, note['id'])
+            elif e.reply.startswith(('ふつおた', 'おたより', 'お便り', '掲示板')):
+                input1 = e.reply.replace('ふつおた', '',1).replace('おたより', '',1).replace('お便り', '',1).replace('掲示板', '',1)
+                input2 = re.search(r' (.+) ', input1)
+                input3 = input1.replace(f'{input2}', '',1)
+                visibility = 'public'
+                print(input1)
+                print(input2)
+                print(input3)
+                if input2 == None:
+                    
+                    input2 = '匿名希望さんからのおたよりです！'
+                    create_note_cw("public", input3, input2)
+                else:
+                    input2 = input2.group(1)
+                    input3 = input1.replace(f'{input2}', '',1)
+                    input2 = f'{input2}さんからのおたよりです！'
+                    create_note_cw("public", input3, input2)
             elif e.reply.startswith(('weather', '天気', '天気予報')):
                 input1 = e.reply
                 input1 = input1.replace('weather', '').replace('天気', '').replace('天気予報', '')
@@ -1028,7 +1453,7 @@ async def on_note(note,user):
                     input1 = input1 + '県'
                 #print(input1)      
                 pref_get = input1
-                dbreader = DBReader(settings.dbname, "weather")
+                dbreader = DBReader(dbname, "weather")
                 # 取得したい列番号を定義する
                 column_a = 3
                 column_b = 6
@@ -1066,33 +1491,44 @@ async def on_note(note,user):
                         name2 = str(name1[index1]).replace("['", "").replace("']", "")
                         name3 = str(name1[index1]).replace("['", "").replace("']", "")
                         weather_mk = 'ご利用ありがとうございます！\n' + pref_get + 'のお天気は、今日は' + name1 + '\n明日は(も) ' + name2 + '\n明後日は(も)' + name3 + 'です。これは気象庁から取得した、' + name0 + '時点の予報です。\nこの予報を生命及び財産の保護等に使わないで下さい。\n(正確かつ最新の予報は直接取得して下さい)'
+                        create_reply(note['visibility'], weather_mk, note['id'])
                         #print(weather_mk)
                     else :
                         #print(url_get)
                         logger.debug('weather_get')  
                         task = asyncio.create_task(weather_get(url_get, id_get, pref_get))
                         g_note = await task
-                        mk.notes_create(text=g_note, visibility=note['visibility'] , reply_id=note['id'])
+                        create_reply(note['visibility'], g_note, note['id'])
                         logger.debug('weather_post')  
                 else :
-                    g_note = '申し訳ありません。都道府県を認識出来ませんでした。\nこの機能はコマンドの為、「weather 都道府県」「天気 都道府県」の文法を厳守してください。（他に何も書かないでください）\n繰り返し失敗する場合はマスターにご連絡をお願いします。ID:' + settings.Master_NAME
-                    mk.notes_create(text=g_note, visibility=note['visibility'] , reply_id=note['id'])
+                    g_note = '申し訳ありません。都道府県を認識出来ませんでした。\nこの機能はコマンドの為、「weather 都道府県」「天気 都道府県」の文法を厳守してください。（他に何も書かないでください）\n繰り返し失敗する場合はマスターにご連絡をお願いします。ID:' + Master_NAME
+                    create_reply(note['visibility'], g_note, note['id'])
                     logger.debug('none_get_pref')  
-            elif user['id'] == settings.Master_ID:#管理者用リプライ制御機能
+            elif user['id'] == Master_ID:#管理者用リプライ制御機能
                 logger.debug('scan_masterID') 
                 if e.reply.startswith(('停止', 'stop', '終了')):
-                    mk.notes_create(text='システムを終了します', visibility=note['visibility'] , reply_id=note['id'])
+                    g_note='システムを終了します'
+                    create_reply(note['visibility'], g_note, note['id'])
+                    json_write("end_alos", 1)
                     sys.exit()
                 elif e.reply.startswith(('再起動', 'restart', 'アプデ')):
-                    mk.notes_create(text='システムを再起動します', visibility=note['visibility'] , reply_id=note['id'])
-                    os.execv(sys.executable, ['python'] + sys.argv)
+                    g_note='システムを再起動します'
+                    create_reply(note['visibility'], g_note, note['id'])
+                    
+                    sys.exit()
                 elif e.reply.startswith(('テスト', 'test', '試験')):
-                    mk.notes_create(text='コードに設定されている関数を実行します', visibility=note['visibility'] , reply_id=note['id'])
-                    import nitizi
+                    g_note = "テストとして指定された関数・機能を実行します"
+                    
+                    create_reply(note['visibility'], g_note, note['id'])
+                    #########################
+                    task = asyncio.create_task(rss_b())
+                    
+                    #########################
                 elif e.reply.startswith(('代理', '投稿', '代理投稿')):
                     toukou = e.reply.replace('代理', '',1).replace('投稿', '',1).replace('代理投稿', '',1)
                     toukou = toukou.replace('にゃ', 'な')
-                    mk.notes_create(text=toukou, visibility='home')
+                    create_note('home', toukou)
+                    
                 else:
                     logger.debug('lmm_start')  
                     #print('test04') 
@@ -1108,7 +1544,8 @@ async def on_note(note,user):
 	                #LLMpy = LLM()
 	                #output_h = LLMpy.llm(input)
 	                #print(output_h)
-                    mk.notes_create(text=output_h, cw='お待たせしました！丹精込めて答えましたよ～！', visibility=note['visibility'] , reply_id=note['id'])
+                    cw_text='お待たせしました！丹精込めて答えましたよ～！'
+                    create_reply_cw(note['visibility'], output_h, cw_text, note['id'])
                     logger.info('lmm_post')
             else:
                 logger.debug('lmm_start')  
@@ -1124,17 +1561,19 @@ async def on_note(note,user):
                 #output_h = LLMpy.llm(input)
                 #print(output_h)
                 mk.notes_create(text=output_h, cw='お待たせしました！丹精込めて答えましたよ～！', visibility=note['visibility'] , reply_id=note['id'])
+                cw_text='お待たせしました！丹精込めて答えましたよ～！'
+                create_reply_cw(note['visibility'], output_h, cw_text, note['id'])
                 logger.info('lmm_post')
     else :
         try:
 
-            if user['id'] == settings.AI_ID:
+            if user['id'] == AI_ID:
                 logger.debug('into_home_else_astrolabe_note')
 
             else:
                 logger.debug('into_home_else_nomal_note')
                 node = note['text']
-                node = node + '。\n'
+                node = str(node)  + '。\n'
                 node = node.replace('。。', '。')
                 node = re.sub(r'。', '。\n', node, flags=re.MULTILINE)#文中読点の改行
                 node = re.sub(r"https:.*", "", node, flags=re.MULTILINE)#https削除
@@ -1149,7 +1588,7 @@ async def on_note(note,user):
                 node = re.sub(r'^\s*\n', '', node, flags=re.MULTILINE)#空白行削除
                 node = emoji.replace_emoji(node, replace="")#絵文字削除
                 node = node.replace('にゃ', 'な')
-                with open(settings.home_cashtxt, 'a', encoding='utf-8') as f:
+                with open(home_cashtxt, 'a', encoding='utf-8') as f:
                     f.writelines(node)
                     logger.debug('record_home_note')
                 
@@ -1163,7 +1602,8 @@ async def on_note(note,user):
                     if test_call == [1]:
                         await asyncio.sleep(10)    
                         logger.debug('reply_yobidashi')
-                        mk.notes_create(text='呼びましたか？？', reply_id=note['id'])
+                        note_text = '呼びましたか？？'
+                        create_reply(note['visibility'], note_text, note['id'])
                     else :
                     
                         pass
@@ -1173,51 +1613,76 @@ async def on_note(note,user):
                     scan_list_oyasumi = r'oyasumi|おやすみ|寝る|就寝|good night'
                     scan_list_kawaii = r'カワイイ|可愛い|かわいい'
                     scan_list_oishii = r'美味しい|おいしい|おいしみ'
-                    scan_list_tiken = r'知見があっぷ|知見がアップ|rs_tiken_up|ちけんがあっぷ|なんだ|らしい|にゃんだ'
+                    scan_list_tiken = r'知見があっぷ|知見がアップ|rs_tiken_up|ちけんがあっぷ|知らなかった|知見|なんだ$|なのか$'
                     scan_list_gohan = r'ごはん|おひる|よるごはん|あさごはん|朝ご飯|お昼|夜ご飯'
+                    scan_list_labe = r'ラーベちゃん'
+                    scan_list_ittekimasu = r'出勤|行ってきます|頑張ってきます|行ってくる|頑張ってくる'
+                    scan_list_kitaku = r'退勤|仕事終わった|しごおわ|帰った|KITAKU|ただいま|帰宅'
+                    
                     if (re.compile(scan_list_ohayou)).search(note['text']):
                         timer = (random.randint(4, 360))
                         timer = float(timer)
                         await asyncio.sleep(timer) 
-                        test = str(random.choices(settings.note_list_ohayou)).replace("['", "").replace("']", "") 
-                        mk.notes_reactions_create(note_id=note['id'], reaction=test)
+                        test = str(random.choices(eval(note_list_ohayou))).replace("['", "").replace("']", "") 
+                        #print(test)
+                        create_reaction(test, note['id'])
                         logger.debug('reaction_ohayou')
                     elif (re.compile(scan_list_oyasumi)).search(note['text']):
                         timer = (random.randint(4, 360))
                         timer = float(timer)
                         await asyncio.sleep(timer) 
-                        test = str(random.choices(settings.note_list_oyasumi)).replace("['", "").replace("']", "") 
-                        mk.notes_reactions_create(note_id=note['id'], reaction=test)
+                        test = str(random.choices(eval(note_list_oyasumi))).replace("['", "").replace("']", "") 
+                        create_reaction(test, note['id'])
                         logger.debug('reaction_oyasumi')
                     elif (re.compile(scan_list_kawaii)).search(note['text']):
                         timer = (random.randint(4, 360))
                         timer = float(timer)
                         await asyncio.sleep(timer) 
-                        test = str(random.choices(settings.note_list_kawaii)).replace("['", "").replace("']", "") 
-                        mk.notes_reactions_create(note_id=note['id'], reaction=test)
+                        test = str(random.choices(eval(note_list_kawaii))).replace("['", "").replace("']", "") 
+                        create_reaction(test, note['id'])
                         logger.debug('reaction_kawaii')
                     elif (re.compile(scan_list_oishii)).search(note['text']):
                         timer = (random.randint(4, 360))
                         timer = float(timer)
                         await asyncio.sleep(timer) 
-                        test = str(random.choices(settings.note_list_oishii)).replace("['", "").replace("']", "") 
-                        mk.notes_reactions_create(note_id=note['id'], reaction=test)
+                        test = str(random.choices(eval(note_list_oishii))).replace("['", "").replace("']", "") 
+                        create_reaction(test, note['id'])
                         logger.debug('reaction_oishii')
                     elif (re.compile(scan_list_tiken)).search(note['text']):
                         timer = (random.randint(4, 360))
                         timer = float(timer)
                         await asyncio.sleep(timer) 
-                        test = str(random.choices(settings.note_list_tiken)).replace("['", "").replace("']", "") 
-                        mk.notes_reactions_create(note_id=note['id'], reaction=test)
+                        test = str(random.choices(eval(note_list_tiken))).replace("['", "").replace("']", "") 
+                        create_reaction(test, note['id'])
                         logger.debug('reaction_tiken')
                     elif (re.compile(scan_list_gohan)).search(note['text']):
                         timer = (random.randint(4, 360))
                         timer = float(timer)
                         await asyncio.sleep(timer) 
-                        test = str(random.choices(settings.note_list_gohan)).replace("['", "").replace("']", "") 
-                        mk.notes_reactions_create(note_id=note['id'], reaction=test)
+                        test = str(random.choices(eval(note_list_gohan))).replace("['", "").replace("']", "") 
+                        create_reaction(test, note['id'])
                         logger.debug('reaction_gohan')
-                        #mk.notes_reactions_create(note_id=note['id'], reaction=':kawaii_comment:')
+                    elif (re.compile(scan_list_labe)).search(note['text']):
+                        timer = (random.randint(4, 360))
+                        timer = float(timer)
+                        await asyncio.sleep(timer) 
+                        test = str(random.choices(eval(note_list_labe))).replace("['", "").replace("']", "") 
+                        create_reaction(test, note['id'])
+                        logger.debug('reaction_labe')
+                    elif (re.compile(scan_list_ittekimasu)).search(note['text']):
+                        timer = (random.randint(4, 360))
+                        timer = float(timer)
+                        await asyncio.sleep(timer) 
+                        test = str(random.choices(eval(note_list_ittekimasu))).replace("['", "").replace("']", "") 
+                        create_reaction(test, note['id'])
+                        logger.debug('reaction_ittekimasu')
+                    elif (re.compile(scan_list_kitaku)).search(note['text']):
+                        timer = (random.randint(4, 360))
+                        timer = float(timer)
+                        await asyncio.sleep(timer) 
+                        test = str(random.choices(eval(note_list_kitaku))).replace("['", "").replace("']", "") 
+                        create_reaction(test, note['id'])
+                        logger.debug('reaction_kitaku')     
                     else:
                         logger.debug('not_conditions_reaction')
         except Exception:
@@ -1229,7 +1694,7 @@ async def on_note(note,user):
 
 
 async def main():
-    await asyncio.gather(runner(), schedule_coroutine())
+    await asyncio.gather(runner(), schedule_coroutine(), runner_main())
 
 if __name__ == "__main__":
 	asyncio.run(main()) 
