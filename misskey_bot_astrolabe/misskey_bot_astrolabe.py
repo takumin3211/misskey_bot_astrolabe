@@ -40,7 +40,8 @@ from selenium.webdriver.support import expected_conditions as EC
 import configparser
 import subprocess
 
-Ver = 'v.1.90.00'
+Ver = 'v.1.91.00'
+"ふつおた機能の実装、投稿管理の外部化(JSON)、設定のINI化、リフォロー機能の修正、MisskeyAPI利用の内製化、コード見直しによるウェブソケット切断時の再読込範囲の削減"
 print(Ver)
 logger = getLogger("astrolabe_logs")
 TOKEN = 0
@@ -432,6 +433,8 @@ dt1()#起動時のみの動作を内部に書く
 
 
 ###########class###############
+
+
 
 class DBReader:  
     def __init__(self, dbname, tablename):
@@ -1302,83 +1305,88 @@ async def schedule_coroutine():
 
 
 async def runner():
- #task1 = asyncio.create_task(schedule_a())
- #await task1
- async with websockets.connect(WS_URL) as ws:
-  try:
-      await ws.send(json.dumps({
-          "type": "connect",
-          "body": {
-                   "channel": "homeTimeline",
-                   "id": "test"
-                   }
-          }))
-      data = json.loads(await ws.recv())
-      logger.debug(data)    
-      while True:
-          try:
+     #task1 = asyncio.create_task(schedule_a())
+     #await task1
+     async with websockets.connect(WS_URL) as ws:
+          while True: 
+              try:
+                  await ws.send(json.dumps({
+                      "type": "connect",
+                      "body": {
+                               "channel": "homeTimeline",
+                               "id": "test"
+                               }
+                      }))
+                  data = json.loads(await ws.recv())
+                  logger.debug(data)    
+                  while True:
+                      try:
      
-               data = json.loads(await ws.recv())
-               logger.debug(data)    
-               if data['type'] == 'channel':
-                   if data['body']['type'] == 'note': 
-                       note = data['body']['body']
-                       user = data['body']['body']['user']
-                       task = asyncio.create_task(on_note(note, user))
-          except Exception:
-               logger.debug(traceback.format_exc())
-               logger.error('Connection_closed')
-               sys.exit()
+                           data = json.loads(await ws.recv())
+                           logger.debug(data)    
+                           if data['type'] == 'channel':
+                               if data['body']['type'] == 'note': 
+                                   note = data['body']['body']
+                                   user = data['body']['body']['user']
+                                   task = asyncio.create_task(on_note(note, user))
+                      except Exception:
+                           logger.debug(traceback.format_exc())
+                           logger.error('Connection_closed')
+                           pass
         
-  except Exception:
-      logger.debug(traceback.format_exc())
-      logger.error('ws_error')
-      sys.exit()
+              except Exception:
+                  logger.debug(traceback.format_exc())
+                  logger.error('ws_error')
+                  break
       
 ###########main_get##############
 
 async def runner_main():
- #task1 = asyncio.create_task(schedule_a())
- #await task1
- async with websockets.connect(WS_URL) as ws:
-  try:
-      await ws.send(json.dumps({
-          "type": "connect",
-          "body": {
-                   "channel": "main",
-                   "id": "test"
-                   }
-          }))
-      data = json.loads(await ws.recv())
-      #rint("test2")
-      while True:
-          #print("test3")
-          try:
+     #task1 = asyncio.create_task(schedule_a())
+     #await task1
+     async with websockets.connect(WS_URL) as ws:
+          while True:
+              try:
+                  await ws.send(json.dumps({
+                      "type": "connect",
+                      "body": {
+                               "channel": "main",
+                               "id": "test"
+                               }
+                      }))
+                  data = json.loads(await ws.recv())
+                  #rint("test2")
+                  while True:
+                      #print("test3")
+                      try:
      
      
-               data = json.loads(await ws.recv())
-               #print(data)
+                           data = json.loads(await ws.recv())
+                           #print(data)
                
-               if data['type'] == 'channel':
-                   #print('channel')
-                   test = data['body']['type']
-                   #print(test)
-                   if data['body']['type'] == 'followed': 
-                       #print('follow')
-                       user = data['body']['body']['id']
-                       #print(user)
-                       create_follow(user)
-                       #task = asyncio.create_task(on_follow(user))
+                           if data['type'] == 'channel':
+                               #print('channel')
+                               test = data['body']['type']
+                               #print(test)
+                               if data['body']['type'] == 'followed': 
+                                   #print('follow')
+                                   user = data['body']['body']['id']
+                                   #print(user)
+                                   create_follow(user)
+                                   #task = asyncio.create_task(on_follow(user))
 
 
-          except Exception:
-               pass
-               #print((traceback.format_exc()))
+                      except Exception:
+                           logger.debug(traceback.format_exc())
+                           logger.error('ws_main_error')
+                           pass
+                           #print((traceback.format_exc()))
 
         
-  except Exception:
-
-      sys.exit()
+              except Exception:
+                  logger.debug(traceback.format_exc())
+                  logger.error('ws_main_error')
+                  break
 
 
 
@@ -1517,12 +1525,12 @@ async def on_note(note,user):
                     
                     sys.exit()
                 elif e.reply.startswith(('テスト', 'test', '試験')):
-                    g_note = "テストとして指定された関数・機能を実行します"
-                    
+                    e.reply = e.reply.replace('テスト', '',1).replace('test', '',1).replace('試験', '',1)
+                    g_note =f"テストとして指定された関数・機能を実行します。実行内容：{e.reply}"
                     create_reply(note['visibility'], g_note, note['id'])
-                    #########################
-                    task = asyncio.create_task(rss_b())
+                    eval(f'{e.reply}')
                     
+                    #########################
                     #########################
                 elif e.reply.startswith(('代理', '投稿', '代理投稿')):
                     toukou = e.reply.replace('代理', '',1).replace('投稿', '',1).replace('代理投稿', '',1)
@@ -1560,7 +1568,6 @@ async def on_note(note,user):
                 #LLMpy = LLM()
                 #output_h = LLMpy.llm(input)
                 #print(output_h)
-                mk.notes_create(text=output_h, cw='お待たせしました！丹精込めて答えましたよ～！', visibility=note['visibility'] , reply_id=note['id'])
                 cw_text='お待たせしました！丹精込めて答えましたよ～！'
                 create_reply_cw(note['visibility'], output_h, cw_text, note['id'])
                 logger.info('lmm_post')

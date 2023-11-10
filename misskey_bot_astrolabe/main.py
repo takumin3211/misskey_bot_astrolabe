@@ -79,7 +79,6 @@ def dt1():
     FORMAT = FORMAT.replace('"', '')
     log_date = str(dt1.strftime('%Y%m%d%H%M%S'))
     dt2 = PATH + '/log/' + log_date + '.log'
-    main_end = PATH + '/.main_end'
     logger.setLevel(INFO)
     fl_handler = FileHandler(filename= dt2 , encoding="utf-8")
     fl_handler.setLevel(INFO)
@@ -94,25 +93,20 @@ def dt1():
     #print(dt1)
     time.sleep(5)
     while True:
-        with open(main_end, "r", encoding = 'utf-8') as f:
-            text = f.read()
-            text = int(text)
-            if json_read("end_alos") == 0:
-                #startup_command = [fr"{var1}/python", fr"{PATH}/{alosname}", f"{log_date}"]
-                startup_command = [fr"{var1}/python", fr"{PATH}/{alosname}", f"{log_date}"]
-                print('アストロラーベのプロセスが始動しました。')
-                #print(startup_command)
-                # test1.pyを起動して、終了を待機する
-                subprocess.run(startup_command, shell=True)   
-            elif json_read("end_alos") ==1 :
+        if json_read("end_alos") == 0:
+            #startup_command = [fr"{var1}/python", fr"{PATH}/{alosname}", f"{log_date}"]
+            startup_command = [fr"{var1}/python", fr"{PATH}/{alosname}", f"{log_date}"]
+            print('アストロラーベのプロセスが始動しました。')
+            #print(startup_command)
+            # test1.pyを起動して、終了を待機する
+            subprocess.run(startup_command, shell=True)   
+        elif json_read("end_alos") ==1 :
 
-                json_write("end_alos", 0)
-                print('終了コマンドを受領した為、停止します。停止フラグは初期化されました。end_alos:0')
+            json_write("end_alos", 0)
+            print('終了コマンドを受領した為、停止します。停止フラグは初期化されました。end_alos:0')
                 
-                sys.exit()
+            sys.exit()
         logger.info("Reboot alos")
         time.sleep(2)
-    
-    #os.exit
-    
+      
 dt1()#起動時のみの動作を内部に書く
