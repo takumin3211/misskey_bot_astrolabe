@@ -15,6 +15,12 @@ import json
 #logger = getLogger('astrolabe_logs')
 logger = getLogger('astrolabe_logs')
 JSON_PATH = 0
+GTL_CASH_CSV_00to04 = 0
+GTL_CASH_CSV_04to08 = 0
+GTL_CASH_CSV_08to12 = 0
+GTL_CASH_CSV_12to16 = 0
+GTL_CASH_CSV_16to20 = 0
+GTL_CASH_CSV_20to24 = 0
 
 def json_write(key, value):
     if type(key) == str:
@@ -48,11 +54,39 @@ def dt1():
     #フォルダ生成系
     log_path = PATH + '/log'
     model_path = PATH + '/model'
-    model_path = PATH + '/cash'
+    cash_path = PATH + '/cash'
+    cash_img_path = PATH + '/cash_img'
     new_dir_path_recursive = log_path
     new_dir_path_recursive_a = model_path
+    new_dir_path_recursive_b = cash_path
+    new_dir_path_recursive_c = cash_img_path
     os.makedirs(new_dir_path_recursive, exist_ok=True)
     os.makedirs(new_dir_path_recursive_a, exist_ok=True)
+    os.makedirs(new_dir_path_recursive_b, exist_ok=True)
+    os.makedirs(new_dir_path_recursive_c, exist_ok=True)
+    GTL_CASH_CSV = config_ini['INSTANCE']['GTL_CASH_CSV']
+    GTL_CASH_CSV_00to04 = config_ini['INSTANCE']['GTL_CASH_CSV_00to04']
+    GTL_CASH_CSV_04to08 = config_ini['INSTANCE']['GTL_CASH_CSV_04to08']
+    GTL_CASH_CSV_08to12 = config_ini['INSTANCE']['GTL_CASH_CSV_08to12']
+    GTL_CASH_CSV_12to16 = config_ini['INSTANCE']['GTL_CASH_CSV_12to16']
+    GTL_CASH_CSV_16to20 = config_ini['INSTANCE']['GTL_CASH_CSV_16to20']
+    GTL_CASH_CSV_20to24 = config_ini['INSTANCE']['GTL_CASH_CSV_20to24']
+    GTL_CASH_CSV = PATH + "/" + GTL_CASH_CSV  
+    GTL_CASH_CSV_00to04 = PATH + "/" + GTL_CASH_CSV_00to04  
+    GTL_CASH_CSV_04to08 = PATH + "/" + GTL_CASH_CSV_04to08  
+    GTL_CASH_CSV_08to12 = PATH + "/" + GTL_CASH_CSV_08to12  
+    GTL_CASH_CSV_12to16 = PATH + "/" + GTL_CASH_CSV_12to16  
+    GTL_CASH_CSV_16to20 = PATH + "/" + GTL_CASH_CSV_16to20  
+    GTL_CASH_CSV_20to24 = PATH + "/" + GTL_CASH_CSV_20to24  
+    GTL_CASH_CSV_temp = pd.DataFrame(columns=['time','instance','id','text'])
+    GTL_CASH_CSV_temp = GTL_CASH_CSV_temp.set_index('time')
+    GTL_CASH_CSV_temp.to_csv(GTL_CASH_CSV, mode='w')
+    GTL_CASH_CSV_temp.to_csv(GTL_CASH_CSV_00to04, mode='w')
+    GTL_CASH_CSV_temp.to_csv(GTL_CASH_CSV_04to08, mode='w')
+    GTL_CASH_CSV_temp.to_csv(GTL_CASH_CSV_08to12, mode='w')
+    GTL_CASH_CSV_temp.to_csv(GTL_CASH_CSV_12to16, mode='w')
+    GTL_CASH_CSV_temp.to_csv(GTL_CASH_CSV_16to20, mode='w')   
+    GTL_CASH_CSV_temp.to_csv(GTL_CASH_CSV_20to24, mode='w')
     #DB記録系
     dbname = config_ini['INSTANCE']['dbname']
     dbname = PATH + "/" + dbname
@@ -96,7 +130,7 @@ def dt1():
         if json_read("end_alos") == 0:
             #startup_command = [fr"{var1}/python", fr"{PATH}/{alosname}", f"{log_date}"]
             startup_command = [fr"{var1}/python", fr"{PATH}/{alosname}", f"{log_date}"]
-            print('アストロラーベのプロセスが始動しました。')
+            print('アストロラーベのメインプロセスが開始されました。\n終了の対応が取られるまで自動再起動により動き続けます')
             #print(startup_command)
             # test1.pyを起動して、終了を待機する
             subprocess.run(startup_command, shell=True)   
@@ -107,6 +141,6 @@ def dt1():
                 
             sys.exit()
         logger.info("Reboot alos")
-        time.sleep(2)
+        time.sleep(5)
       
 dt1()#起動時のみの動作を内部に書く

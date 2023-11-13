@@ -39,10 +39,17 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import configparser
 import subprocess
+from concurrent.futures import ProcessPoolExecutor
+import nlplot
+import plotly
+from plotly.subplots import make_subplots
+from plotly.offline import iplot
+import matplotlib.pyplot as plt
 
-Ver = 'v.1.91.00'
-"ふつおた機能の実装、投稿管理の外部化(JSON)、設定のINI化、リフォロー機能の修正、MisskeyAPI利用の内製化、コード見直しによるウェブソケット切断時の再読込範囲の削減"
-print(Ver)
+Ver = 'v.1.92.00'
+"v.1.91.00:ふつおた機能の実装、投稿管理の外部化(JSON)、設定のINI化、リフォロー機能の修正、MisskeyAPI利用の内製化、コード見直しによるウェブソケット切断時の再読込範囲の削減"
+"v.1.92.00:ワードクラウド機能の実装。再読込の際、処理が高速に行われる問題の修正、起動メッセージの修正、起動報告のDMが複数回送られる問題の修正"
+#print(Ver)
 logger = getLogger("astrolabe_logs")
 TOKEN = 0
 Master_ID = 0
@@ -69,9 +76,18 @@ note_list_gohan = 0
 note_list_labe = 0
 note_list_ittekimasu = 0
 note_list_kitaku = 0
+csvname = 0
 dbname = 0
 JSON_PATH = 0
-
+GTL_CASH_CSV = 0
+GTL_CASH_CSV_00to04 = 0
+GTL_CASH_CSV_04to08 = 0
+GTL_CASH_CSV_08to12 = 0
+GTL_CASH_CSV_12to16 = 0
+GTL_CASH_CSV_16to20 = 0
+GTL_CASH_CSV_20to24 = 0
+MECAB_DIR = 0
+IMG_SAVE_DIR = 0
 PATH = 0
 
 WS_URL = 0
@@ -113,8 +129,33 @@ def create_note(visibility, note_text):
         r = requests.post(url1, data=pyload1, headers=headers) 
         logger.debug(r)  
     except Exception:
+        logger.debug(traceback.format_exc())
         sys.exit()
 
+def create_note_with_file(visibility, note_text, img_id):
+    try:
+        logger.debug(f'start_create_note_with_file')
+        headers = {"Content-Type": "application/json"}
+        visibility = visibility.replace('"', '')
+        note_text = note_text.replace('"', '')
+        img_id = str(img_id).replace('"', '')
+        url1 = f"https://{SERVER_URL}/api/notes/create"
+        pyload1 = {
+    "i": f"{TOKEN}",
+    'visibility': f'{visibility}',
+    "text": f'{note_text}', 
+    "fileIds": [f'{img_id}'], 
+    
+    }
+        
+        pyload1 = json.dumps(pyload1)
+        r = requests.post(url1, data=pyload1, headers=headers) 
+        logger.debug(pyload1)  
+        logger.debug(r)  
+    except Exception:
+        logger.debug(traceback.format_exc())
+        sys.exit()
+        
 def create_dm(note_text, usr_id):
     try:
         #print('test2')
@@ -282,9 +323,64 @@ def delete_follow(usr_id):
     except Exception:
         pass
 
+def create_file(img_path):
+    try:
+        with open(img_path, 'rb') as f:
+            #f = f.read()
+            #f = base64.b64encode(f)
+            logger.debug(f'start_create_file\n{img_path}')
+            url1 = f"https://{SERVER_URL}/api/drive/files/create"
+            headers = {"Content-Type": "multipart/form-data"}
+            print(type(f))
+            #print(f)
+            params = {
+                  'i' : f'{TOKEN}',
+                  }
+            #print(type(params))
+            #print('########################################################')
+            #pyload1 = json.dumps(params)
+            r = requests.post(
+                url1, 
+                data=params,
+                files={'img' : f},
+                #headers=headers,
+                )
+            logger.debug(f'{r}\n{r.text}')
+            #print(r.text)
+            #print(r)
+            #print(r.text)
+            #print(r.content)
+            media_id = json.loads(r.content)
+            
+            media_id = media_id['id']
+
+            logger.info(f'create_fila\nimg_path:{img_path}\nmedia_id:{media_id}')
+            return media_id
+        #logger.debug(r) 
+    except Exception:
+        logger.debug(traceback.format_exc())
+        sys.exit()
+    
+
 def get_meta():
     pass
 
+def get_users_show():
+    try:
+        headers = {"Content-Type": "application/json"}
+        #print(reaction)
+        url3 = f"https://{SERVER_URL}/api/users/show"
+        pyload3 = {
+    "i": f"{TOKEN}",
+    "userId": f'{AI_ID}',
+        }
+        pyload3 = json.dumps(pyload3)
+        r = requests.post(url3, data=pyload3, headers=headers) 
+        return_text = json.loads(r.content)
+        return return_text
+    
+    except Exception:
+        pass
 def get_emoji():
     pass
 
@@ -337,7 +433,7 @@ def dt1():
     try:
         global PATH
         dt1 = datetime.datetime.now()
-        PATH = os.path.dirname(os.path.abspath(__file__)) 
+        PATH = os.path.dirname(os.path.abspath(__file__)).replace(os.sep,'/')
         
 
         FORMAT = config_main("INSTANCE", "format")
@@ -367,8 +463,17 @@ def dt1():
         global note_list_ittekimasu
         global note_list_kitaku
         global dbname
+        global csvname
         global JSON_PATH
-        
+        global GTL_CASH_CSV
+        global GTL_CASH_CSV_00to04
+        global GTL_CASH_CSV_04to08
+        global GTL_CASH_CSV_08to12
+        global GTL_CASH_CSV_12to16
+        global GTL_CASH_CSV_16to20
+        global GTL_CASH_CSV_20to24
+        global MECAB_DIR
+        global IMG_SAVE_DIR
         
         SERVER_URL = config_main("INSTANCE", "SERVER_URL")
         RSS_URL_a = config_main("INSTANCE", "RSS_URL_a")
@@ -391,9 +496,29 @@ def dt1():
         note_list_kitaku = config_main("INSTANCE", "note_list_kitaku")
         dbname = config_main("INSTANCE", "dbname")
         dbname = PATH + "/" + dbname
+        csvname = config_main("INSTANCE", "csvname")
+        csvname = PATH + "/" + csvname
         JSON_NAME = config_main("INSTANCE", "JSON_NAME")
         JSON_PATH = PATH + "/" + JSON_NAME  
-
+        GTL_CASH_CSV = config_main("INSTANCE", "GTL_CASH_CSV")
+        GTL_CASH_CSV_00to04 = config_main("INSTANCE", "GTL_CASH_CSV_00to04")
+        GTL_CASH_CSV_04to08 = config_main("INSTANCE", "GTL_CASH_CSV_04to08")
+        GTL_CASH_CSV_08to12 = config_main("INSTANCE", "GTL_CASH_CSV_08to12")
+        GTL_CASH_CSV_12to16 = config_main("INSTANCE", "GTL_CASH_CSV_12to16")
+        GTL_CASH_CSV_16to20 = config_main("INSTANCE", "GTL_CASH_CSV_16to20")
+        GTL_CASH_CSV_20to24 = config_main("INSTANCE", "GTL_CASH_CSV_20to24")
+        GTL_CASH_CSV = PATH + "/" + GTL_CASH_CSV  
+        GTL_CASH_CSV_00to04 = PATH + "/" + GTL_CASH_CSV_00to04  
+        GTL_CASH_CSV_04to08 = PATH + "/" + GTL_CASH_CSV_04to08  
+        GTL_CASH_CSV_08to12 = PATH + "/" + GTL_CASH_CSV_08to12  
+        GTL_CASH_CSV_12to16 = PATH + "/" + GTL_CASH_CSV_12to16  
+        GTL_CASH_CSV_16to20 = PATH + "/" + GTL_CASH_CSV_16to20  
+        GTL_CASH_CSV_20to24 = PATH + "/" + GTL_CASH_CSV_20to24  
+        GTL_CASH_CSV = PATH + "/" + GTL_CASH_CSV  
+        MECAB_DIR = config_main("INSTANCE", "MECAB_DIR")
+        MECAB_DIR = PATH + "/" + MECAB_DIR  
+        IMG_SAVE_DIR = config_main("INSTANCE", "IMG_SAVE_DIR")
+        IMG_SAVE_DIR = PATH + "/" + IMG_SAVE_DIR
         #print(type(note_list_ohayou))
         global Master_ID
         global Master_NAME
@@ -415,11 +540,11 @@ def dt1():
         global WS_URL
         WS_URL_a = 'wss://' + SERVER_URL + '/streaming?i='
         WS_URL = WS_URL_a + TOKEN
-        print(WS_URL)
-        opinion_text = ('アストロラーベのシステムが起動しました\n' + str(dt1) + '\n' +  Ver)
-        
-        create_dm(opinion_text, Master_ID)
-        print('test')
+        #print(WS_URL)
+        opinion_text = ('アストロラーベのシステムが起動しました\n\n' + str(dt1) + '\n' +  Ver)
+        time.sleep(2)
+        #create_dm(opinion_text, Master_ID)
+        #print(opinion_text)
         #os.exit
 
     except Exception:
@@ -737,10 +862,89 @@ async def oyasumi():
     logger.info("def_oyasumi_oyasumi clear")  
     timer2 = random.randint(0, 50)
     timer2 = float(timer2)
+    
     await asyncio.sleep(timer2)
-    import nitizi
+    task = asyncio.create_task(nitizi_main())
     logger.info("def_oyasumi_nitizi clear")  
     return 'test'
+
+async def nitizi_main():
+
+    conn = sqlite3.connect(dbname)
+    cur = conn.cursor()
+
+
+
+    ##############設定ファイル##############
+    df = pd.read_csv(csvname)# 設定ファイル行き
+    get_users = get_users_show()
+    #print(text)
+    name1 = int(get_users["notesCount"])
+    name2 = int(get_users["followersCount"])
+    name3 = int(get_users["followingCount"])
+
+    dbreader = DBReader(dbname, "sample")
+    # 取得したい列番号を定義する
+    column_a = 4# = today
+    # n列目のデータのリストを取得する
+    column_data_a = dbreader.get_column(column_a)
+    #print(column_data_a)
+
+    # リストのデータを順番に取り出し、整数値にする。
+    name1_y = int(column_data_a[0])
+    name2_y = int(column_data_a[1])
+    name3_y = int(column_data_a[2])
+    # 前日比計算
+    name1_c = name1 - name1_y
+    name2_c = name2 - name2_y
+    name3_c = name3 - name3_y
+
+    # 投稿系
+
+    sql = "SELECT * FROM time_db"
+    cur.execute(sql)
+    df = pd.read_sql_query(sql, conn)
+    df = pd.read_sql_query(sql, conn)
+    #print(df)
+    dt1 = (df.iloc[0, 2]) 
+    dt1 = datetime.datetime.strptime(dt1, '%Y-%m-%d %H:%M:%S.%f')
+
+    ############Misskey投稿################
+
+    def nitizi():
+        #api取得
+        #get_users = get_users_show()
+        #時間取得
+        dt_now = datetime.datetime.now()
+        def progre_time():
+            dt2 = datetime.datetime.now()
+            dt3 = dt2- dt1
+            days = dt3.days
+            hours, remainder = divmod(dt3.total_seconds(), 3600)
+            minutes, seconds = divmod(remainder, 60)
+            hours_cale = int(hours) - days*24
+            progre_time2 = f"{days}日と{hours_cale}時間{int(minutes)}分{int(seconds)}秒"
+            return  progre_time2
+        progre_time2 = progre_time()
+        #投稿文作成
+        test = ('今日のノート投稿数は' + str(name1_c) + '、今日のフォロワー増加数は' + str(name2_c) + 'でした。\n以上、日次報告を終了します。')
+        test_a = ('【日次報告】' + dt_now.strftime('%Y年%m月%d日 %H時%M分%S秒') + "アストロラーベの日次自動メンテナンスが完了しました。\n全機能は正常です。稼働時間は" + progre_time2 + '。\n' + test)
+        #print(test)
+        #投稿関数
+        create_note("home", test_a)  
+        logger.info('post_nitizi')
+        sql = "SELECT * FROM sample"
+        cur.execute(sql)
+        cur.execute(f"UPDATE sample SET today = {name1} WHERE name = 'notes'")
+        cur.execute(f"UPDATE sample SET today = {name2} WHERE name = 'followers'")
+        cur.execute(f"UPDATE sample SET today = {name3} WHERE name = 'following'")
+        df = pd.read_sql_query(sql, conn)
+        logger.debug(df)
+        conn.commit()
+        cur.close()
+        conn.close()
+        logger.debug('nitizi_db_write_ok')
+    nitizi()
 
 async def rss_a():
     dbreader = DBReader(dbname, "rssqa_1")
@@ -1151,13 +1355,19 @@ async def weather_get_sche():
 async def asy_test():
     await asyncio.sleep(5)
     print('async test')
-   
 
+async def alos_nitizi():
+    json_reset()
+    await sleep(30)
+    wordcloud_main(999)
+    logger.info('alos_nitizi_clear')
 
 ###########schedule_ctrl##############
 
 async def schedule_coroutine():
-
+    dt = datetime.datetime.now()
+    opinion_text = f'アストロラーベが起動されました.。\n（この通知はスケジュール系の起動と同期しています。\n\nVer:{Ver}\n時間:{dt}'
+    create_dm(opinion_text, Master_ID)
     while True:
        try:
            
@@ -1286,20 +1496,446 @@ async def schedule_coroutine():
                   logger.debug('wakeup_asy_test')
                   json_write("n_test", 1)
                   await asy_test()
-
+               elif dt_a == '04:00':
+                  wordcloud_main(0)
+               elif dt_a == '08:00':
+                  wordcloud_main(1)
+               elif dt_a == '12:00':
+                  wordcloud_main(2)
+               elif dt_a == '16:00':
+                  wordcloud_main(3)
+               elif dt_a == '20:00':
+                  wordcloud_main(4)
+               elif dt_a == '00:00':
+                  wordcloud_main(5)
                #以後周回処理
                elif dt_a == '23:59':
                    logger.debug('circle1')  
                    n_date = 0
                elif dt_a == '00:00' and n_date == 0:
+                   task = asyncio.create_task(alos_nitizi())
                    logger.debug('circle_break')
-                   json_reset()
                    break
                await asyncio.sleep(60)
            continue
        except Exception:
             logger.debug(traceback.format_exc())
             logger.info('schedule_coroutine_exception')
+
+
+###########Wordcloud##############
+async def write_csv_gtl(df):
+    try:    
+        dt1 = datetime.datetime.now()
+        record_time = int(dt1.strftime('%H'))
+        if record_time == 0 or record_time == 1 or record_time == 2 or record_time == 3:
+            df.to_csv(GTL_CASH_CSV_00to04, mode='a', header=False)
+            
+        elif record_time == 4 or record_time == 5 or record_time == 6 or record_time == 7:
+            df.to_csv(GTL_CASH_CSV_04to08, mode='a', header=False)
+        elif record_time == 8 or record_time == 9 or record_time == 10 or record_time == 11:
+            df.to_csv(GTL_CASH_CSV_08to12, mode='a', header=False)
+        elif record_time == 12 or record_time == 13 or record_time == 14 or record_time == 15:
+            df.to_csv(GTL_CASH_CSV_12to16, mode='a', header=False)
+        elif record_time == 16 or record_time == 17 or record_time == 18 or record_time == 19:
+            df.to_csv(GTL_CASH_CSV_16to20, mode='a', header=False)
+        elif record_time == 20 or record_time == 21 or record_time == 22 or record_time == 23:
+            df.to_csv(GTL_CASH_CSV_20to24, mode='a', header=False)
+    except Exception:
+        logger.debug(traceback.format_exc())
+        logger.info('write_csv_gtl_error')
+            
+async def csv_gtl_connect():
+    pass
+    
+
+def wordcloud(df):
+    try:
+        tagger = MeCab.Tagger(fr'-chasen -d {MECAB_DIR}')
+        text_list = df["text"].tolist()
+        word_df = pd.DataFrame({'text': []}, index=[])
+        # word_df["text"] = word_df["text"].astype("object")
+        id_s = 0
+        for text in text_list:
+            text = str(text)
+            word_list = []
+            w = tagger.parse(text)
+            node = tagger.parseToNode(text)
+            while node:
+                pos = node.feature.split(",")[0]
+                # if pos == "形容詞" or pos == "名詞" or pos == "動詞":
+                if pos == "形容詞" or pos == "名詞":
+
+                    word_list.append(node.surface)
+                node = node.next
+            word_list = str(word_list).replace('[', '').replace(']', '').replace(',', ' ').replace("'", ' ')
+            word_df.loc[f'{id_s}'] = [f'{word_list}']
+            id_s = id_s + 1
+        # print(word_list)
+        # word_df = pd.DataFrame(word_list, columns=["Text"])
+        # print(word_df)
+        return word_df
+    except Exception:
+        logger.debug(traceback.format_exc())
+        logger.error('wordcloud_error')
+        
+def wordcloud_main(toukatsu):
+    try:
+        time_sta2 = time.perf_counter()
+        tagger = MeCab.Tagger(fr'-chasen -d {MECAB_DIR}')
+        logger.debug(f'start_wordcloud_main')
+        df = 0
+        dt1 = datetime.datetime.now()
+        record_time = int(dt1.strftime('%Y'))
+        if toukatsu == 999:
+            df0 = pd.read_csv(GTL_CASH_CSV_00to04)
+            df1 = pd.read_csv(GTL_CASH_CSV_04to08)
+            df0 = pd.concat([df0, df1])
+            del df1
+            df2 = pd.read_csv(GTL_CASH_CSV_08to12)
+            df0 = pd.concat([df0, df2])
+            del df2
+            df3 = pd.read_csv(GTL_CASH_CSV_12to16)
+            df0 = pd.concat([df0, df3])
+            del df3
+            df4 = pd.read_csv(GTL_CASH_CSV_16to20)
+            df0 = pd.concat([df0, df4])
+            del df4
+            df5 = pd.read_csv(GTL_CASH_CSV_20to24)
+            df0 = pd.concat([df0, df5])
+            del df5
+            df = df0
+
+        elif toukatsu == 0:
+            df = pd.read_csv(GTL_CASH_CSV_00to04)
+        elif toukatsu == 1:
+            df = pd.read_csv(GTL_CASH_CSV_04to08)
+        elif toukatsu == 2:
+            df = pd.read_csv(GTL_CASH_CSV_08to12)
+        elif toukatsu == 3:
+            df = pd.read_csv(GTL_CASH_CSV_12to16)
+        elif toukatsu == 4:
+            df = pd.read_csv(GTL_CASH_CSV_16to20)
+        elif toukatsu == 5:
+            df = pd.read_csv(GTL_CASH_CSV_20to24)
+            
+        inst_list = (df['instance'].value_counts(sort=True).index.tolist())
+        inst_dict = (df['instance'].value_counts(sort=True).to_dict())
+        inst_list_count = int(len(inst_list))
+        inst_choice_random = random.randint(0, inst_list_count)
+        #print(inst_list_count)
+        #print(inst_choice_random)
+        insetance_choice_name = inst_list[inst_choice_random]
+        insetance_choice_count = inst_dict[insetance_choice_name]
+        #print(insetance_choice_name)
+        #print(insetance_choice_count)
+        logger.debug(f'inst_list_count:{inst_list_count}\ninst_choice_random:{inst_choice_random}')
+        usr_list = (df['id'].value_counts(sort=True).index.tolist())
+        usr_dict = (df['id'].value_counts(sort=True).to_dict())
+        usr_list_count = int(len(usr_list))
+        #print(usr_list_count)
+        usr_choice_random = random.randint(0, usr_list_count)
+        #print(random__)
+        usr_choice_name = usr_list[usr_choice_random]
+        usr_choice_count = usr_dict[usr_choice_name]
+        logger.debug(f'usr_list_count:{usr_list_count}\nusr_choice_random:{usr_choice_random}')
+        #print(usr_choice_name)
+        #print(usr_choice_count)
+
+
+        start_time = df.iloc[0]['time']
+        time__ = start_time.replace('T', ' ').replace('Z', '')
+        dte1 = datetime.datetime.strptime(time__, '%Y-%m-%d %H:%M:%S.%f')
+
+        end_time = df.iloc[-1]['time']
+        time__ = end_time.replace('T', ' ').replace('Z', '')
+        dte2 = datetime.datetime.strptime(time__, '%Y-%m-%d %H:%M:%S.%f')
+
+        totalling_time = dte2 - dte1
+        sec = totalling_time.total_seconds()
+        print(sec)
+        totalling_time_hours = int(sec // 3600)
+        cale_time = 0
+        cale_time_text = 0
+        #print()
+        if totalling_time.days >= 1:
+            cale_time = totalling_time_hours + 24
+        elif totalling_time.days == 0:
+            cale_time = totalling_time_hours
+        if cale_time == 0:
+            cale_time = int(sec // 360)
+            cale_time_text = str(f'{cale_time}分間')
+        else :
+            cale_time_text = str(f'{cale_time}時間')
+        # print(df)
+        split_n = 10000
+        n = len(df)
+        dfs = []
+        df_count = n / split_n
+        df_count = int(df_count)
+        df_count = df_count + 1
+        logger.debug(f'GTL_count{n}')
+        #print(df_count)
+        if toukatsu == 999:
+            pass
+        else :
+            dataframes = [pd.DataFrame({'text': []}, index=[]) for _ in range(df_count)]
+            for i in range(df_count):
+                start = i * split_n
+                end = start + split_n
+                dataframes[i] = df.iloc[start:end]
+            cpu_count = psutil.cpu_count()
+        
+            if cpu_count > 1:
+                logger.debug(f'get_cpu_core{cpu_count}')
+            else:
+                logger.error('not_get_cpu_core_count')
+                cpu_count = 4
+            with ProcessPoolExecutor(max_workers=cpu_count) as executor:
+                # Execute the `wordcloud` function on each DataFrame chunk
+                results = list(executor.map(wordcloud, dataframes))
+            #del df
+            
+            combined_df = pd.concat(results)
+            
+
+            # Concatenate the resulting DataFrames
+        
+            #combined_df.to_csv(mecab_csv_name)
+            #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    
+            #combined_df = pd.read_csv(mecab_csv_name)
+            #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+            #print(combined_df)
+    
+
+            npt = nlplot.NLPlot(combined_df, target_col='text')
+    
+            stopwords = npt.get_stopword(top_n=0, min_freq=0) + ['こと', 'これ', 'それ', 'ない', 'さん', 'もん', 'やつ', 'なん', 'ちゃん', 'くん', '中', 'みたい', '何', 'ん', 'の', 'さ', 'ー', 'そう', '人', '色', 'the', 'of', 'to', 'and', 'in', 'blob', 'meltblob', 'cat', 'with', 'ちんこ', 'まんこ', 'ちんぽ', 'ごみ', 'カス', '死ね', '自殺', 'エッチ', 'エロ', 'グロ', '人身事故', '死', '系', 'nan', '型', '的', 'レイプ', 'a']
+            '''
+            fig_unigram = npt.bar_ngram(
+            title='uni-gram',
+            xaxis_label='word_count',
+            yaxis_label='word',
+            ngram=1,
+            top_n=50,
+            width=800,
+            height=1100,
+            color=None,
+            horizon=True,
+            stopwords=stopwords,
+            verbose=False,
+            save=False,
+            )
+            fig_unigram.show()
+            '''
+        
+            #fig_unigram.write_image() 
+    
+            fig_wc = npt.wordcloud(
+            width=1000,
+            height=600,
+            max_words=100,
+            max_font_size=100,
+            colormap='tab20_r',
+            stopwords=stopwords,
+            mask_file=None,
+            save=False
+            )
+            plt.figure(figsize=(16, 9))
+            plt.imshow(fig_wc, interpolation="bilinear")
+            plt.axis("off")
+            dt1 = datetime.datetime.now()
+            file_name_time = str(dt1.strftime('%Y%m%d%H%M%S'))
+            img_file_name = (f"{IMG_SAVE_DIR}/{file_name_time}.png") 
+            plt.savefig(img_file_name) 
+            
+            #plt.show()
+            '''
+            test = npt.build_graph(stopwords=stopwords, min_edge_frequency=25)
+            print(test)
+    
+            fig_co_network = npt.co_network(
+            title='Co-occurrence network',
+            sizing=100,
+            node_size='adjacency_frequency',
+            color_palette='hls',
+            width=1100,
+            height=700,
+            save=False
+            )
+            test_plot = iplot(fig_co_network)
+            '''
+            #test_plot.write_image('test3.png')
+
+            #df = pd.read_csv(GTL_CASH_CSV)
+
+            
+            #dataDelete = df.head(0)
+            
+            #del df
+            #pass   
+
+        n_calc = (n // 10000)
+        n_calc_text = 0
+        wc_text = 0
+        if n_calc == 0 :
+            n_calc_text = str(f'全{n_calc}件')
+        else :
+            n_calc_text = str(f'約{n_calc}万件')
+        if toukatsu == 999:
+            wc_text = ''
+        else :
+            wc_text = '、その特徴語が画像のワードクラウドです。'
+            
+        toukatsu_text = f'''私が直近{cale_time_text}に観測したGTLのデータです。{n_calc}万件の投稿があり{wc_text}
+参加インスタンスは{inst_list_count}サーバ、参加ユーザー数は{usr_list_count}人でした。
+なお、投稿数第{inst_choice_random}位のサーバは{insetance_choice_name}で{insetance_choice_count}件、投稿数第{usr_choice_random}位のユーザーは{usr_choice_name}さんで{usr_choice_count}件でした。
+        '''    
+        file_id = create_file(img_file_name)
+        create_note_with_file("public", toukatsu_text, file_id)  
+        df = df.head(0)
+        
+        if toukatsu == 999:
+            df.to_csv(GTL_CASH_CSV, mode='a', header=False)
+            GTL_CASH_CSV_temp = pd.DataFrame(columns=['time','instance','id','text'])
+            GTL_CASH_CSV_temp = GTL_CASH_CSV_temp.set_index('time')
+            GTL_CASH_CSV_temp.to_csv(GTL_CASH_CSV_00to04, mode='w')
+            GTL_CASH_CSV_temp.to_csv(GTL_CASH_CSV_04to08, mode='w')
+            GTL_CASH_CSV_temp.to_csv(GTL_CASH_CSV_08to12, mode='w')
+            GTL_CASH_CSV_temp.to_csv(GTL_CASH_CSV_12to16, mode='w')
+            GTL_CASH_CSV_temp.to_csv(GTL_CASH_CSV_16to20, mode='w')   
+            GTL_CASH_CSV_temp.to_csv(GTL_CASH_CSV_20to24, mode='w')
+            logger.debug('del_GTL_CASH_CSV_ALL')
+    except Exception:
+        logger.debug(traceback.format_exc())
+        logger.error('word_cloud_main_error')
+
+async def cloud_global_runner():#グローバル受信系
+
+    #task1 = asyncio.create_task(schedule_a())
+    #await task1
+    async with websockets.connect(WS_URL) as ws:
+        g_n = 0
+        buf_gr = ''
+        buf_gr_1 = ''
+        node_cash = str("")
+        while True:
+            try:
+                await ws.send(json.dumps({
+                "type": "connect",
+                "body": {
+                       "channel": "globalTimeline",
+                       "id": "test"
+                       }
+                }))
+                data = json.loads(await ws.recv())
+                #logger.debug(data)    
+                break_parm = int(0)
+                df = pd.DataFrame({'instance': [],
+                                   'usr_id': [],
+                                   'note': []},
+                                  index=[])
+                while True:
+                   
+                    try:
+                    
+                        data = json.loads(await ws.recv())
+                        #logger.debug(data)    
+                        #print('get_global')
+                        #print(data)
+                        if data['type'] == 'channel':
+                            if data['body']['type'] == 'note': 
+                                #print('gtl_get')
+                                note = data['body']['body']
+                                #print(note)
+                                time = data['body']['body']['createdAt']
+                                name = data['body']['body']['user']['name']
+                                try:
+                                     instance = data['body']['body']['user']['instance']['name']
+                                except Exception:
+                                     continue
+                                if time == None:
+                                    continue
+                                elif name == None:
+                                    continue
+                                elif instance == None:
+                                    continue
+                                time = str(time)
+                                usr_id = str(name)
+                                instance =  str(instance)
+                                buf_note =  note['text']
+                                if buf_note == None:
+                                    continue
+                                else :
+                                    #print('test2')
+                            
+                                
+                                    node = buf_note + '。\n'
+                                    node = node.replace('。。', '。').replace('$', '')
+                                    node = re.sub(r'。', '。\n', node, flags=re.MULTILINE)#文中読点の改行
+                                    node = re.sub(r"https:.*", "", node, flags=re.MULTILINE)#https削除
+                                    node = re.sub(r"@.*", "", node, flags=re.MULTILINE)
+                                    node = re.sub(r"<.*>", "", node, flags=re.MULTILINE)
+                                    node = re.sub(r"[.*]", "", node, flags=re.MULTILINE)
+                                    node = re.sub(r':', '', node, flags=re.MULTILINE)#短文削除
+                                    node = re.sub(r'\.*', '', node, flags=re.MULTILINE)#短文削除
+                                    node = re.sub(r":.*:", "", node, flags=re.MULTILINE)#カスタム絵文字削除<
+                                    node = re.sub(r"@.* ", "", node, flags=re.MULTILINE)#メンション削除
+                                    node = re.sub(r"#.* ", "", node, flags=re.MULTILINE)#ハッシュタグ削除
+                                    node = re.sub(r"#.*", "", node, flags=re.MULTILINE)#ハッシュタグ削除
+                                    #node = re.sub(r"#", "", node, flags=re.MULTILINE)#ハッシュタグ取り切れないもの削除
+                                    #node = re.sub(r'^.{1,10}$', '', node, flags=re.MULTILINE)#短文削除
+                                    node = re.sub(r"　", "", node, flags=re.MULTILINE)#空白削除
+                                    node = re.sub(r'^\s*\n', '', node, flags=re.MULTILINE)#空白行削除
+                                    node = emoji.replace_emoji(node, replace="")#絵文字削除
+                                    node = node.replace('にゃ', 'な')
+                                
+                                    #print(type(node))
+                                
+                                    #node_cash = node_cash + node
+                                    #print(node)
+                                    break_parm = break_parm + 1
+                                    #print(node_cash)
+                                    #======================================本番はiniに収容する変数
+                                    #生成系をdt1に追記。既存があれば上書きしない形。日次から貰ったyyyymmddデータをf{}で収容。削除系は検討。結果データだけあれば良いのはそう。
+                                
+                                    #======================================
+                                
+                                    #print(break_parm)
+                                    #print(df)
+
+                                    df.loc[f'{time}'] = [f'{instance}', f'{usr_id}', f'{node}']
+                                    #print(df)
+
+
+                                
+                                    test_time = "23:59"
+                                    dt = datetime.datetime.now()
+                                    dt_a = (str(dt.strftime('%H:%M')))
+                                    #if dt_a == test_time:
+                                    if break_parm >= 50:
+                                        break_parm = 0
+                                        logger.debug('gtl_record')
+                                        task = asyncio.create_task(write_csv_gtl(df))
+                                    
+                                        #print('fin')
+
+                                        '''
+                                        #cloud_gtl_write(node_cash)
+                                        table = 'gtl'
+                                        task = asyncio.create_task(get_column(dbname, table__, time, instance, usr_id, node_cash))
+                                        break_parm = 0
+                                        print('fin2')'''
+                    except Exception:
+                        pass
+            except Exception:
+                logger.debug(traceback.format_exc())
+                logger.error('Connection_closed_global')
+                await sleep(5)
+                break
+
 
 ###########home_get##############
 
@@ -1318,12 +1954,12 @@ async def runner():
                                }
                       }))
                   data = json.loads(await ws.recv())
-                  logger.debug(data)    
+                  #logger.debug(data)    
                   while True:
                       try:
      
                            data = json.loads(await ws.recv())
-                           logger.debug(data)    
+                           #logger.debug(data)    
                            if data['type'] == 'channel':
                                if data['body']['type'] == 'note': 
                                    note = data['body']['body']
@@ -1337,6 +1973,7 @@ async def runner():
               except Exception:
                   logger.debug(traceback.format_exc())
                   logger.error('ws_error')
+                  await sleep(5)
                   break
       
 ###########main_get##############
@@ -1386,6 +2023,7 @@ async def runner_main():
               except Exception:
                   logger.debug(traceback.format_exc())
                   logger.error('ws_main_error')
+                  await sleep(5)
                   break
 
 
@@ -1434,9 +2072,9 @@ async def on_note(note,user):
                 input2 = re.search(r' (.+) ', input1)
                 input3 = input1.replace(f'{input2}', '',1)
                 visibility = 'public'
-                print(input1)
-                print(input2)
-                print(input3)
+                #print(input1)
+                #print(input2)
+                #print(input3)
                 if input2 == None:
                     
                     input2 = '匿名希望さんからのおたよりです！'
@@ -1522,7 +2160,8 @@ async def on_note(note,user):
                 elif e.reply.startswith(('再起動', 'restart', 'アプデ')):
                     g_note='システムを再起動します'
                     create_reply(note['visibility'], g_note, note['id'])
-                    
+                    for process in executor._processes.values():
+                        process.kill()
                     sys.exit()
                 elif e.reply.startswith(('テスト', 'test', '試験')):
                     e.reply = e.reply.replace('テスト', '',1).replace('test', '',1).replace('試験', '',1)
@@ -1600,8 +2239,8 @@ async def on_note(note,user):
                     logger.debug('record_home_note')
                 
                 logger.debug('not_scan_mention')
-            
-                if 'アストロラーベちゃん' in note['text']:
+                node_str = str(note['text'])
+                if 'アストロラーベちゃん' in node_str:
                     logger.debug('call_astrolabe')
                     test_call = random.choices([1, 2], weights=[1, 2])
                     logger.debug(test_call)
@@ -1626,7 +2265,7 @@ async def on_note(note,user):
                     scan_list_ittekimasu = r'出勤|行ってきます|頑張ってきます|行ってくる|頑張ってくる'
                     scan_list_kitaku = r'退勤|仕事終わった|しごおわ|帰った|KITAKU|ただいま|帰宅'
                     
-                    if (re.compile(scan_list_ohayou)).search(note['text']):
+                    if (re.compile(scan_list_ohayou)).search(node_str):
                         timer = (random.randint(4, 360))
                         timer = float(timer)
                         await asyncio.sleep(timer) 
@@ -1634,56 +2273,56 @@ async def on_note(note,user):
                         #print(test)
                         create_reaction(test, note['id'])
                         logger.debug('reaction_ohayou')
-                    elif (re.compile(scan_list_oyasumi)).search(note['text']):
+                    elif (re.compile(scan_list_oyasumi)).search(node_str):
                         timer = (random.randint(4, 360))
                         timer = float(timer)
                         await asyncio.sleep(timer) 
                         test = str(random.choices(eval(note_list_oyasumi))).replace("['", "").replace("']", "") 
                         create_reaction(test, note['id'])
                         logger.debug('reaction_oyasumi')
-                    elif (re.compile(scan_list_kawaii)).search(note['text']):
+                    elif (re.compile(scan_list_kawaii)).search(node_str):
                         timer = (random.randint(4, 360))
                         timer = float(timer)
                         await asyncio.sleep(timer) 
                         test = str(random.choices(eval(note_list_kawaii))).replace("['", "").replace("']", "") 
                         create_reaction(test, note['id'])
                         logger.debug('reaction_kawaii')
-                    elif (re.compile(scan_list_oishii)).search(note['text']):
+                    elif (re.compile(scan_list_oishii)).search(node_str):
                         timer = (random.randint(4, 360))
                         timer = float(timer)
                         await asyncio.sleep(timer) 
                         test = str(random.choices(eval(note_list_oishii))).replace("['", "").replace("']", "") 
                         create_reaction(test, note['id'])
                         logger.debug('reaction_oishii')
-                    elif (re.compile(scan_list_tiken)).search(note['text']):
+                    elif (re.compile(scan_list_tiken)).search(node_str):
                         timer = (random.randint(4, 360))
                         timer = float(timer)
                         await asyncio.sleep(timer) 
                         test = str(random.choices(eval(note_list_tiken))).replace("['", "").replace("']", "") 
                         create_reaction(test, note['id'])
                         logger.debug('reaction_tiken')
-                    elif (re.compile(scan_list_gohan)).search(note['text']):
+                    elif (re.compile(scan_list_gohan)).search(node_str):
                         timer = (random.randint(4, 360))
                         timer = float(timer)
                         await asyncio.sleep(timer) 
                         test = str(random.choices(eval(note_list_gohan))).replace("['", "").replace("']", "") 
                         create_reaction(test, note['id'])
                         logger.debug('reaction_gohan')
-                    elif (re.compile(scan_list_labe)).search(note['text']):
+                    elif (re.compile(scan_list_labe)).search(node_str):
                         timer = (random.randint(4, 360))
                         timer = float(timer)
                         await asyncio.sleep(timer) 
                         test = str(random.choices(eval(note_list_labe))).replace("['", "").replace("']", "") 
                         create_reaction(test, note['id'])
                         logger.debug('reaction_labe')
-                    elif (re.compile(scan_list_ittekimasu)).search(note['text']):
+                    elif (re.compile(scan_list_ittekimasu)).search(node_str):
                         timer = (random.randint(4, 360))
                         timer = float(timer)
                         await asyncio.sleep(timer) 
                         test = str(random.choices(eval(note_list_ittekimasu))).replace("['", "").replace("']", "") 
                         create_reaction(test, note['id'])
                         logger.debug('reaction_ittekimasu')
-                    elif (re.compile(scan_list_kitaku)).search(note['text']):
+                    elif (re.compile(scan_list_kitaku)).search(node_str):
                         timer = (random.randint(4, 360))
                         timer = float(timer)
                         await asyncio.sleep(timer) 
@@ -1700,10 +2339,37 @@ async def on_note(note,user):
 ###########manage##############
 
 
+def cloud_global_runner_1():
+    try:
+        asyncio.run(cloud_global_runner()) 
+    except Exception:
+        logger.debug(traceback.format_exc())
+        sys.exit()  
+     
+
+
 async def main():
-    await asyncio.gather(runner(), schedule_coroutine(), runner_main())
+    try:
+        await asyncio.gather(runner(), schedule_coroutine(), runner_main())
+    except Exception:
+        logger.debug(traceback.format_exc())
+        sys.exit()  
+def runner_low_load():
+    try:
+        asyncio.run(main()) 
+    except Exception:
+        logger.debug(traceback.format_exc())
+        sys.exit()  
+        
 
 if __name__ == "__main__":
-	asyncio.run(main()) 
+    try:
+        #asyncio.run(main()) 
+        with ProcessPoolExecutor(max_workers=5) as executor:
+            executor.submit(cloud_global_runner_1)
+            executor.submit(asyncio.run(main()))
+    except Exception:
+        logger.debug(traceback.format_exc())
+        sys.exit()       
 
-logger.info('all_code_read') 
+
