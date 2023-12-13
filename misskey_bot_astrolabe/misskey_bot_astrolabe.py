@@ -48,7 +48,6 @@ from plotly.offline import iplot
 import matplotlib.pyplot as plt
 import jaconv
 
- S
 Ver = 'V.01.94.16.26'
 'メジャーバージョン（根本的な改変）:マイナーバージョン（大規模な変更）:リビジョン（細かな変更）:ビルド（バグ修正など）'
 'V.01.94.00.00 2023/11/28 RSSの拡充(二つ)、Wikipedia記事紹介、スケジュール系のバグ修正、ワードクラウドの動作改善、ログ機能のバグ修正、ログレベルの変更機能、TL勉強機能の実装'
